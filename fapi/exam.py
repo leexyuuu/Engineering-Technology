@@ -4,28 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
-from database import SessionLocal, engine, Exam, Question, SubQuestion, Option, Student, StudentExam, StudentAnswer
+from models import SessionLocal, engine, Exam, Question, SubQuestion, Option, Student, StudentExam, StudentAnswer
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
+from base import app,get_db
 import os
 import uuid
 from jose import JWTError, jwt
 import shutil
 
-# FastAPI应用
-app = FastAPI()
-
-# 允许跨域
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # 安全相关配置
-SECRET_KEY = "your-secret-key-here"
+SECRET_KEY = "mysaasfad435435dggfyf4556dsfecretkey"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -36,13 +25,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# 依赖项
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+
 
 # Pydantic模型
 class Token(BaseModel):
