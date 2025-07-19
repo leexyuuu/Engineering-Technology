@@ -191,6 +191,50 @@ export const asyncRoutes = [
   tableRouter,
 
   {
+    path: '/exam',
+    component: Layout,
+    redirect: '/exam/examlist',
+    name: '考试',
+    meta: { title: '考试', icon: 'el-icon-document' },
+    children: [
+      {
+        path: 'examlist',
+        component: () => import('@/views/exam/examlist'),
+        name: '考试列表',
+        meta: { title: '考试管理', icon: 'list' }
+      },
+      {
+        path: 'editexam/:id(\\d+)?',
+        component: () => import('@/views/exam/editexam'),
+        name: '编辑考试',
+        meta: { title: '编辑考试', noCache: true, activeMenu: '/exam/examlist' },
+        hidden: true
+      },
+      {
+        path: 'studentlist/:exam_id(\\d+)',
+        component: () => import('@/views/exam/studentlist'),
+        name: '考试学生列表',
+        meta: { title: '考试学生', noCache: true, activeMenu: '/exam/examlist' },
+        hidden: true
+      },
+      {
+        path: 'questionlist/:exam_id(\\d+)',
+        component: () => import('@/views/exam/questionlist'),
+        name: '考试题目列表',
+        meta: { title: '考试题目', noCache: true, activeMenu: '/exam/examlist' },
+        hidden: true
+      },
+      {
+        path: 'editquestion/:exam_id(\\d+)/:question_id(\\d+)?',
+        component: () => import('@/views/exam/editquestion'),
+        name: '编辑题目',
+        meta: { title: '编辑题目', noCache: true, activeMenu: '/exam/examlist' },
+        hidden: true
+      }
+    ]
+  },
+
+  {
     path: '/example',
     component: Layout,
     redirect: '/example/list',
@@ -496,6 +540,7 @@ export const asyncRoutes = [
       }
     ]
   },
+
 
   // 404 page must be placed at the end !!!
   { path: '*', redirect: '/404', hidden: true }

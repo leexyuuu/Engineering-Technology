@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
-from models import SessionLocal, engine, Exam, Question, SubQuestion, Option, Student, StudentExam, StudentAnswer
+from models import engine, Exam, Question, SubQuestion, Option, Student, StudentExam, StudentAnswer
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from base import app,get_db
@@ -286,9 +286,9 @@ def create_exam(exam: ExamCreate, db: Session = Depends(get_db)):
     db.refresh(db_exam)
     return db_exam
 
-@app.get("/exams/", response_model=List[ExamResponse])
-def read_exams(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    exams = db.query(Exam).offset(skip).limit(limit).all()
+@app.get("/exam/list", response_model=List[ExamResponse])
+def read_exams(page: int = 1, page_size: int = 20, db: Session = Depends(get_db)):
+    exams = db.query(Exam).offset(page_size*(page-1)).limit(page_size).all()
     return exams
 
 @app.get("/exams/{exam_id}", response_model=ExamResponse)

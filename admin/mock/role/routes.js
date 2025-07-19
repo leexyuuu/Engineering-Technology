@@ -312,7 +312,49 @@ const asyncRoutes = [
       }
     ]
   },
-
+  {
+    path: '/exam',
+    component: 'layout/Layout',
+    redirect: '/exam/examlist',
+    name: '考试',
+    meta: { title: '考试', icon: 'el-icon-document' },
+    children: [
+      {
+        path: 'examlist',
+        component: 'views/exam/examlist',
+        name: '考试列表',
+        meta: { title: '考试管理', icon: 'list' }
+      },
+      {
+        path: 'editexam/:id(\\d+)?',
+        component: 'views/exam/editexam',
+        name: '编辑考试',
+        meta: { title: '编辑考试', noCache: true},
+        hidden: true
+      },
+      {
+        path: 'studentlist/:exam_id(\\d+)',
+        component: 'views/exam/studentlist',
+        name: '考试学生列表',
+        meta: { title: '考试学生', noCache: true },
+        hidden: true
+      },
+      {
+        path: 'questionlist/:exam_id(\\d+)',
+        component: 'views/exam/questionlist',
+        name: '考试题目列表',
+        meta: { title: '考试题目', noCache: true },
+        hidden: true
+      },
+      {
+        path: 'editquestion/:exam_id(\\d+)/:question_id(\\d+)?',
+        component: 'views/exam/editquestion',
+        name: '编辑题目',
+        meta: { title: '编辑题目', noCache: true },
+        hidden: true
+      }
+    ]
+  },
   {
     path: '/example',
     component: 'layout/Layout',
@@ -344,7 +386,6 @@ const asyncRoutes = [
         meta: { title: '内容管理', icon: 'list' }
       },
      
-    
       {
         path: 'createcity',
         component: 'views/example/createcity',
