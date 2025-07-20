@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
@@ -10,6 +10,7 @@ from passlib.context import CryptContext
 from base import app,get_db
 import os
 import uuid
+from admin import checkToken
 from jose import JWTError, jwt
 import shutil
 
@@ -278,13 +279,14 @@ async def read_students_me(current_student: Student = Depends(get_current_studen
     return current_student
 
 # 考试相关接口
-@app.post("/exams/", response_model=ExamResponse)
-def create_exam(exam: ExamCreate, db: Session = Depends(get_db)):
+@app.post("/exam/create")
+def create_exam(exam: ExamCreate=Depends(), token: str = Header(..., alias="Authorization"), db: Session = Depends(get_db)):
+    checkToken(token)
     db_exam = Exam(**exam.dict())
     db.add(db_exam)
     db.commit()
     db.refresh(db_exam)
-    return db_exam
+    return {"code":20000,"data":db_exam}
 
 @app.get("/exam/list", response_model=List[ExamResponse])
 def read_exams(page: int = 1, page_size: int = 20, db: Session = Depends(get_db)):
