@@ -42,7 +42,7 @@ export default {
       loading: false,
       total: 0,
       page: 1,
-      pageSize: 10
+      pageSize: 50
     }
   },
   created() {
@@ -52,8 +52,8 @@ export default {
     fetchList() {
       this.loading = true
       fetchExamList({ page: this.page, page_size: this.pageSize }).then(res => {
-        this.examList = res.items || res.data || []
-        this.total = res.total || 0
+        this.examList = res.data.items || []
+        this.total = res.data.total || 0
         this.loading = false
       }).catch(() => { this.loading = false })
     },
