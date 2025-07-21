@@ -66,7 +66,9 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const username = ref('')
 const password = ref('')
 const showPassword = ref(false)
@@ -87,8 +89,9 @@ const handleLogin = () => {
     password: password.value
   })
   
-  // 模拟登录成功
+  // 模拟登录成功，跳转到考试页面
   alert('登录成功！')
+  router.push('/exam')
 }
 </script>
 

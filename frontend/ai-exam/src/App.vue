@@ -1,9 +1,9 @@
 <script setup>
-import LoginPage from './components/LoginPage.vue'
+// 路由组件会自动加载
 </script>
 
 <template>
-  <LoginPage />
+  <router-view />
 </template>
 
 <style>
