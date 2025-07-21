@@ -1,11 +1,11 @@
 import request from '@/utils/request'
 
 // 考试相关API
-export function fetchExamList(params) {
+export function fetchExamList(data) {
   return request({
     url: '/api/exam/list',
     method: 'get',
-    params
+    params:data
   })
 }
 
@@ -20,7 +20,7 @@ export function createExam(data) {
   return request({
     url: '/api/exam/create',
     method: 'post',
-    data
+    params:data
   })
 }
 
@@ -28,7 +28,7 @@ export function updateExam(id, data) {
   return request({
     url: `/api/exam/${id}`,
     method: 'put',
-    data
+    params:data
   })
 }
 
@@ -40,11 +40,11 @@ export function deleteExam(id) {
 }
 
 // 学生相关API
-export function fetchExamStudentList(exam_id, params) {
+export function fetchExamStudentList(exam_id, data) {
   return request({
     url: `/api/exam/${exam_id}/students`,
     method: 'get',
-    params
+    params:data
   })
 }
 
@@ -52,7 +52,7 @@ export function createExamStudent(exam_id, data) {
   return request({
     url: `/api/exam/${exam_id}/students`,
     method: 'post',
-    data
+    params:data
   })
 }
 
@@ -60,7 +60,7 @@ export function updateExamStudent(exam_id, student_id, data) {
   return request({
     url: `/api/exam/${exam_id}/students/${student_id}`,
     method: 'put',
-    data
+    params:data
   })
 }
 
@@ -72,11 +72,11 @@ export function deleteExamStudent(exam_id, student_id) {
 }
 
 // 题目相关API
-export function fetchExamQuestionList(exam_id, params) {
+export function fetchExamQuestionList(exam_id, data) {
   return request({
     url: `/api/exam/${exam_id}/questions`,
     method: 'get',
-    params
+    params:data
   })
 }
 
@@ -91,7 +91,7 @@ export function createExamQuestion(exam_id, data) {
   return request({
     url: `/api/exam/${exam_id}/questions`,
     method: 'post',
-    data
+    params:data
   })
 }
 
@@ -99,7 +99,7 @@ export function updateExamQuestion(exam_id, question_id, data) {
   return request({
     url: `/api/exam/${exam_id}/questions/${question_id}`,
     method: 'put',
-    data
+    params:data
   })
 }
 
@@ -122,7 +122,7 @@ export function createQuestionProblem(exam_id, question_id, data) {
   return request({
     url: `/api/exam/${exam_id}/questions/${question_id}/problems`,
     method: 'post',
-    data
+    params:data
   })
 }
 
@@ -130,7 +130,7 @@ export function updateQuestionProblem(exam_id, question_id, problem_id, data) {
   return request({
     url: `/api/exam/${exam_id}/questions/${question_id}/problems/${problem_id}`,
     method: 'put',
-    data
+    params:data
   })
 }
 

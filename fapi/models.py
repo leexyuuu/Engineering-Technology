@@ -2,8 +2,13 @@ from sqlalchemy import Column,Boolean, ForeignKey,Text, Integer,String,Date,Date
 from database import Base,engine
 from sqlalchemy.orm import relationship  # 从orm模块导入relationship
 
+import os
+import uuid
+from jose import JWTError, jwt
+import shutil
 
-
+def generate_uuid():
+    return str(uuid.uuid4())  # 返回字符串类型的 UUID
 class RoleModel(Base):
     __tablename__ = "roles"
     id = Column(Integer, primary_key=True, index=True)
@@ -146,13 +151,11 @@ class ReplyModel(Base):
     status= Column(String(32),server_default=text("'show'"),index=True)
 
 
-def generate_uuid():
-    return str(uuid.uuid4())
 
 class Exam(Base):
     __tablename__ = "exams"
-    
     id = Column(String, primary_key=True, default=generate_uuid)
+
     name = Column(String(100), nullable=False)
     description = Column(Text)
     instructions = Column(Text, nullable=False)
@@ -167,6 +170,7 @@ class Question(Base):
     __tablename__ = "questions"
     
     id = Column(String, primary_key=True, default=generate_uuid)
+
     exam_id = Column(String, ForeignKey("exams.id"), nullable=False)
     order = Column(Integer, nullable=False)  # 题目顺序
     content = Column(Text, nullable=False)
@@ -181,6 +185,7 @@ class SubQuestion(Base):
     __tablename__ = "sub_questions"
     
     id = Column(String, primary_key=True, default=generate_uuid)
+
     question_id = Column(String, ForeignKey("questions.id"), nullable=False)
     order = Column(Integer, nullable=False)  # 子问题顺序
     content = Column(Text, nullable=False)
@@ -195,6 +200,7 @@ class Option(Base):
     __tablename__ = "options"
     
     id = Column(String, primary_key=True, default=generate_uuid)
+
     sub_question_id = Column(String, ForeignKey("sub_questions.id"), nullable=False)
     content = Column(Text, nullable=False)
     is_correct = Column(Boolean, default=False)
@@ -205,6 +211,7 @@ class Student(Base):
     __tablename__ = "students"
     
     id = Column(String, primary_key=True, default=generate_uuid)
+
     name = Column(String(50), nullable=False)
     avatar = Column(String(255))  # 头像URL
     gender = Column(String(10))
@@ -219,6 +226,7 @@ class StudentExam(Base):
     __tablename__ = "student_exams"
     
     id = Column(String, primary_key=True, default=generate_uuid)
+
     student_id = Column(String, ForeignKey("students.id"), nullable=False)
     exam_id = Column(String, ForeignKey("exams.id"), nullable=False)
     start_time = Column(DateTime)  # 学生开始考试时间
