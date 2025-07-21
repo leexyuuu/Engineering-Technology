@@ -318,7 +318,7 @@ def update_exam(exam_id: str, exam: ExamCreate=Depends(),token: str = Header(...
 
 
 # 题目相关接口
-@app.post("/questions/", response_model=QuestionResponse)
+@app.post("/questions/")
 def create_question(question: QuestionCreate, db: Session = Depends(get_db)):
     db_question = Question(**question.dict())
     db.add(db_question)
@@ -326,20 +326,20 @@ def create_question(question: QuestionCreate, db: Session = Depends(get_db)):
     db.refresh(db_question)
     return db_question
 
-@app.get("/questions/{question_id}", response_model=QuestionResponse)
+@app.get("/questions/{question_id}")
 def read_question(question_id: str, db: Session = Depends(get_db)):
     question = db.query(Question).filter(Question.id == question_id).first()
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
     return question
 
-@app.get("/exams/{exam_id}/questions", response_model=List[QuestionResponse])
+@app.get("/exams/{exam_id}/questions")
 def read_exam_questions(exam_id: str, db: Session = Depends(get_db)):
     questions = db.query(Question).filter(Question.exam_id == exam_id).order_by(Question.order).all()
     return questions
 
 # 子问题相关接口
-@app.post("/subquestions/", response_model=SubQuestionResponse)
+@app.post("/subquestions/")
 def create_subquestion(subquestion: SubQuestionCreate, db: Session = Depends(get_db)):
     db_subquestion = SubQuestion(**subquestion.dict())
     db.add(db_subquestion)
@@ -347,13 +347,13 @@ def create_subquestion(subquestion: SubQuestionCreate, db: Session = Depends(get
     db.refresh(db_subquestion)
     return db_subquestion
 
-@app.get("/questions/{question_id}/subquestions", response_model=List[SubQuestionResponse])
+@app.get("/questions/{question_id}/subquestions")
 def read_question_subquestions(question_id: str, db: Session = Depends(get_db)):
     subquestions = db.query(SubQuestion).filter(SubQuestion.question_id == question_id).order_by(SubQuestion.order).all()
     return subquestions
 
 # 选项相关接口
-@app.post("/options/", response_model=OptionResponse)
+@app.post("/options/")
 def create_option(option: OptionCreate, db: Session = Depends(get_db)):
     db_option = Option(**option.dict())
     db.add(db_option)
@@ -361,13 +361,13 @@ def create_option(option: OptionCreate, db: Session = Depends(get_db)):
     db.refresh(db_option)
     return db_option
 
-@app.get("/subquestions/{subquestion_id}/options", response_model=List[OptionResponse])
+@app.get("/subquestions/{subquestion_id}/options")
 def read_subquestion_options(subquestion_id: str, db: Session = Depends(get_db)):
     options = db.query(Option).filter(Option.sub_question_id == subquestion_id).all()
     return options
 
 # 学生考试相关接口
-@app.post("/student/exams/start", response_model=StudentExamResponse)
+@app.post("/student/exams/start")
 def start_exam(
     exam_data: StudentExamStart, 
     current_student: Student = Depends(get_current_student),
@@ -408,7 +408,7 @@ def start_exam(
     db.refresh(student_exam)
     return student_exam
 
-@app.get("/student/exams/{exam_id}", response_model=StudentExamResponse)
+@app.get("/student/exams/{exam_id}")
 def get_student_exam(
     exam_id: str,
     current_student: Student = Depends(get_current_student),
@@ -424,7 +424,7 @@ def get_student_exam(
     
     return student_exam
 
-@app.post("/student/exams/{exam_id}/submit", response_model=ExamResult)
+@app.post("/student/exams/{exam_id}/submit")
 def submit_exam(
     exam_id: str,
     answers: List[AnswerSubmit],
