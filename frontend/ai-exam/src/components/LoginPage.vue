@@ -172,20 +172,20 @@ const handleLogin = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 20px;
   margin: 0;
 }
 
 .login-form {
   width: 100%;
-  max-width: 400px;
+  max-width: 350px;
 }
 
 .login-title {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: bold;
   color: #333;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
   text-align: center;
 }
 
@@ -203,7 +203,7 @@ const handleLogin = () => {
 
 .form-input {
   width: 100%;
-  padding: 16px;
+  padding: 14px;
   border: 2px solid #e1e5e9;
   border-radius: 8px;
   font-size: 16px;
@@ -238,7 +238,7 @@ const handleLogin = () => {
 
 .login-button {
   width: 100%;
-  padding: 16px;
+  padding: 14px;
   background: #3498db;
   color: white;
   border: none;
