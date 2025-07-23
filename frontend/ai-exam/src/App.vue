@@ -35,5 +35,6 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  background: #f0f0f0; /* 添加背景色以便调试 */
 }
 </style>

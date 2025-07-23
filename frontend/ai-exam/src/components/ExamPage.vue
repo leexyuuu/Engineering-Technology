@@ -123,10 +123,11 @@
                   <td>{{ index + 1 }}</td>
                   <td>上传{{ file }}</td>
                   <td>
-                    <button class="upload-arrow-btn">上传答案{{ index + 1 }}</button>
+                    <input type="file" :id="'file-' + index" style="display: none;" />
+                    <label :for="'file-' + index" class="file-input-label">选择文件</label>
                   </td>
                   <td>
-                    <!-- 操作列可以为空或添加其他操作按钮 -->
+                    <button class="upload-btn">上传答案{{ index + 1 }}</button>
                   </td>
                 </tr>
               </tbody>
@@ -183,13 +184,14 @@ const fileStatuses = ref({
 
 <style scoped>
 .exam-container {
-  height: 100vh;
-  width: 100vw;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
-  background: #f5f5f5;
-  margin: 0;
-  padding: 0;
+  background: blue; /* 调试背景色 */
   overflow: hidden;
 }
 
@@ -236,14 +238,16 @@ const fileStatuses = ref({
 
 .exam-main {
   flex: 1;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   overflow: hidden;
   margin: 0;
   padding: 0;
+  width: 100%;
+  background: green; /* 调试背景色 */
 }
 
 .left-panel {
-  flex: 2;
   background: white;
   display: flex;
   flex-direction: column;
@@ -389,12 +393,12 @@ const fileStatuses = ref({
 }
 
 .right-panel {
-  flex: 3;
   background: white;
   display: flex;
   flex-direction: column;
   margin: 0;
   padding: 0;
+  overflow: hidden;
 }
 
 .upload-tabs {
@@ -425,7 +429,8 @@ const fileStatuses = ref({
   flex: 1;
   padding: 15px;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
+  width: 100%;
 }
 
 .instructions {
@@ -446,21 +451,28 @@ const fileStatuses = ref({
   margin-bottom: 0;
 }
 
+.upload-table {
+  overflow-x: auto;
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+}
+
 .upload-table table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
 }
 
 .upload-table th,
 .upload-table td {
   border: 1px solid #e0e0e0;
-  padding: 6px 4px;
+  padding: 8px 6px;
   text-align: left;
   font-size: 12px;
   word-wrap: break-word;
   overflow-wrap: break-word;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .upload-table th {
@@ -469,20 +481,21 @@ const fileStatuses = ref({
   color: #333;
 }
 
-.upload-table th:nth-child(1) { width: 12%; }
-.upload-table th:nth-child(2) { width: 38%; }
-.upload-table th:nth-child(3) { width: 30%; }
-.upload-table th:nth-child(4) { width: 20%; }
+.upload-table th:nth-child(1) { width: auto; }
+.upload-table th:nth-child(2) { width: auto; }
+.upload-table th:nth-child(3) { width: auto; }
+.upload-table th:nth-child(4) { width: auto; }
 
 .file-input-label {
   display: inline-block;
-  padding: 6px 12px;
-  background: #3498db;
+  padding: 4px 8px;
+  background: #6c757d;
   color: white;
-  border-radius: 4px;
+  border-radius: 3px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   transition: background-color 0.3s ease;
+  white-space: nowrap;
 }
 
 .file-input-label:hover {
@@ -490,16 +503,16 @@ const fileStatuses = ref({
 }
 
 .upload-btn {
-  padding: 3px 6px;
-  background: #27ae60;
+  padding: 4px 8px;
+  background: #3498db;
   color: white;
   border: none;
   border-radius: 3px;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   transition: background-color 0.3s ease;
   white-space: nowrap;
-  min-width: 40px;
+  min-width: 50px;
 }
 
 .upload-btn:hover {
@@ -580,4 +593,6 @@ const fileStatuses = ref({
   justify-content: center;
   color: #666;
 }
+
+
 </style> 

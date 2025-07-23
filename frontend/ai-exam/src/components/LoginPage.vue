@@ -97,16 +97,18 @@ const handleLogin = () => {
 
 <style scoped>
 .login-container {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   overflow: hidden;
-  margin: 0;
-  padding: 0;
+  background: red; /* 调试背景色 */
 }
 
 .left-section {
-  flex: 2;
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
   display: flex;
   align-items: center;
@@ -119,13 +121,21 @@ const handleLogin = () => {
 .left-section::after {
   content: '';
   position: absolute;
-  right: -50px;
+  right: 0;
   top: 0;
   bottom: 0;
-  width: 100px;
+  width: 80px;
   background: white;
   border-radius: 50% 0 0 50%;
-  transform: translateX(50%);
+  transform: translateX(50%) scaleX(0.5);
+  z-index: -1;
+}
+
+/* 添加媒体查询处理大屏幕 */
+@media (min-width: 1600px) {
+  .left-section::after {
+    display: none; /* 超大屏幕直接隐藏 */
+  }
 }
 
 .logo-section {
@@ -167,7 +177,6 @@ const handleLogin = () => {
 }
 
 .right-section {
-  flex: 3;
   background: white;
   display: flex;
   align-items: center;
@@ -178,7 +187,7 @@ const handleLogin = () => {
 
 .login-form {
   width: 100%;
-  max-width: 350px;
+  max-width: 500px;
 }
 
 .login-title {
@@ -261,11 +270,11 @@ const handleLogin = () => {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .login-container {
-    flex-direction: column;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
   }
   
   .left-section {
-    flex: 1;
     min-height: 200px;
   }
   
@@ -274,7 +283,6 @@ const handleLogin = () => {
   }
   
   .right-section {
-    flex: 1;
     padding: 20px;
   }
   
