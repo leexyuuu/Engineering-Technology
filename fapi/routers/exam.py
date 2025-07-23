@@ -1,23 +1,25 @@
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Header
+from fastapi import Body,Depends, Request,HTTPException, status, UploadFile, File, Form, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel,Field
 from models import engine, Exam, Question, SubQuestion, Option, Student, StudentExam, StudentAnswer
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from base import app,get_db
+from fastapi.exceptions import RequestValidationError
 import os
 import uuid
 from admin import checkToken
 from jose import JWTError, jwt
 import shutil
+from fastapi.responses import JSONResponse
 
 # 安全相关配置
 SECRET_KEY = "mysaasfad435435dggfyf4556dsfecretkey"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 3000
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -71,12 +73,6 @@ class ExamResponse(BaseModel):
     end_time: datetime
     duration_minutes: int
 
-class QuestionCreate(BaseModel):
-    exam_id: str
-    order: int
-    content: str
-    requires_file: bool = False
-    file_description: Optional[str] = None
 
 class QuestionResponse(BaseModel):
     id: str
@@ -86,12 +82,26 @@ class QuestionResponse(BaseModel):
     requires_file: bool
     file_description: Optional[str]
 
+
+class OptionCreate(BaseModel):
+    content: str
+    is_correct: bool = False
+
 class SubQuestionCreate(BaseModel):
-    question_id: str
     order: int
     content: str
-    question_type: str  # "single_choice", "multiple_choice", "text"
-    score: float = 1.0
+    question_type: str
+    score: float
+    options: Optional[List[OptionCreate]]
+
+
+class QuestionCreate(BaseModel):
+    exam_id: str
+    order: int
+    content: str
+    requires_file: bool
+    file_description: Optional[str] 
+    sub_questions_str: str
 
 class SubQuestionResponse(BaseModel):
     id: str
@@ -101,10 +111,7 @@ class SubQuestionResponse(BaseModel):
     question_type: str
     score: float
 
-class OptionCreate(BaseModel):
-    sub_question_id: str
-    content: str
-    is_correct: bool = False
+
 
 class OptionResponse(BaseModel):
     id: str
@@ -134,6 +141,27 @@ class ExamResult(BaseModel):
     correct_answers: int
     score: float
     answers: List[dict]
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = []
+    for error in exc.errors():
+        loc = ".".join(str(l) for l in error["loc"])
+        errors.append({
+            "location": "query" if loc.startswith("query") else "body",
+            "field": loc.replace("query.", "").replace("body.", ""),
+            "message": error["msg"],
+            "type": error["type"]
+        })
+    
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "参数验证失败",
+            "errors": errors,
+            "suggestion": "请检查查询参数和请求体格式"
+        }
+    )
 
 # 辅助函数
 def verify_password(plain_password, hashed_password):
@@ -238,6 +266,9 @@ def calculate_score(student_exam: StudentExam, db: Session):
         "score": total_score
     }
 
+
+
+
 # 认证相关接口
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -254,7 +285,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/students/", response_model=StudentResponse)
+@app.post("/students/")
 def create_student(student: StudentCreate, db: Session = Depends(get_db)):
     db_student = db.query(Student).filter(Student.phone == student.phone).first()
     if db_student:
@@ -274,7 +305,7 @@ def create_student(student: StudentCreate, db: Session = Depends(get_db)):
     db.refresh(db_student)
     return db_student
 
-@app.get("/students/me", response_model=StudentResponse)
+@app.get("/students/me")
 async def read_students_me(current_student: Student = Depends(get_current_student)):
     return current_student
 
@@ -316,15 +347,23 @@ def update_exam(exam_id: str, exam: ExamCreate=Depends(),token: str = Header(...
     db.refresh(db_exam)
     return {"code":20000,"data":db_exam}
 
-
+@app.middleware("http")
+async def add_cors_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.method == "OPTIONS":
+        response.headers["Access-Control-Allow-Origin"] = "http://localhost:9527"
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
 # 题目相关接口
-@app.post("/questions/")
-def create_question(question: QuestionCreate, db: Session = Depends(get_db)):
-    db_question = Question(**question.dict())
+@app.post("/exam/questions/create")
+def create_question(question: QuestionCreate=Depends(), token: str = Header(..., alias="Authorization"), db: Session = Depends(get_db)):
+    checkToken(token)
+    db_question = Question(**question.dict(exclude={"sub_questions_str"}))
     db.add(db_question)
     db.commit()
     db.refresh(db_question)
-    return db_question
+    return {"code":20000,"data":db_question}
 
 @app.get("/questions/{question_id}")
 def read_question(question_id: str, db: Session = Depends(get_db)):

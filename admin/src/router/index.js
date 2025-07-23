@@ -204,7 +204,7 @@ export const asyncRoutes = [
         meta: { title: '考试管理', icon: 'list' }
       },
       {
-        path: 'editexam/:id',
+        path: 'editexam/:id?',
         component: () => import('@/views/exam/editexam'),
         name: '编辑考试',
         meta: { title: '编辑考试', noCache: true, activeMenu: '/exam/examlist' },
@@ -225,7 +225,7 @@ export const asyncRoutes = [
         hidden: true
       },
       {
-        path: 'editquestion/:exam_id/:question_id',
+        path: 'editquestion/:exam_id/:question_id?',
         component: () => import('@/views/exam/editquestion'),
         name: '编辑题目',
         meta: { title: '编辑题目', noCache: true, activeMenu: '/exam/examlist' },

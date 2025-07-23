@@ -58,7 +58,7 @@ export default {
       }).catch(() => { this.loading = false })
     },
     handleAdd() {
-      this.$router.push({ path: `/exam/editquestion/${this.exam_id}` })
+      this.$router.push({ path: `/exam/editquestion/${this.exam_id}/` })
     },
     handleEdit(row) {
       this.$router.push({ path: `/exam/editquestion/${this.exam_id}/${row.id}` })

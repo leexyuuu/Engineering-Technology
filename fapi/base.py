@@ -2,12 +2,17 @@ from fastapi import FastAPI
 from database import SessionLocal, engine, Base
 from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
+from fastapi.middleware.cors import CORSMiddleware
+origins = [
+    "http://localhost:9527",  "http://192.168.3.4:9527"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 允许所有源，也可以指定具体的源
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # 允许所有方法
-    allow_headers=["*"],  # 允许所有头
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # 依赖项：获取数据库会话

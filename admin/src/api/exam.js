@@ -49,6 +49,7 @@ export function fetchExamStudentList(exam_id, data) {
 }
 
 export function createExamStudent(exam_id, data) {
+
   return request({
     url: `/api/exam/${exam_id}/students`,
     method: 'post',
@@ -87,17 +88,17 @@ export function fetchExamQuestion(exam_id, question_id) {
   })
 }
 
-export function createExamQuestion(exam_id, data) {
+export function createExamQuestion(data) {
   return request({
-    url: `/api/exam/${exam_id}/questions`,
+    url:  '/api/exam/questions/create',
     method: 'post',
     params:data
   })
 }
 
-export function updateExamQuestion(exam_id, question_id, data) {
+export function updateExamQuestion(question_id, data) {
   return request({
-    url: `/api/exam/${exam_id}/questions/${question_id}`,
+    url: `/api/exam/questions/${question_id}`,
     method: 'put',
     params:data
   })

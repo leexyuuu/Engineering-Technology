@@ -7,13 +7,6 @@
       <el-table-column prop="start_time" label="考试开始时间" />
       <el-table-column prop="end_time" label="考试截止时间" />
       <el-table-column prop="duration_minutes" label="考试时长" />
-      <el-table-column label="题目数">
-        <template slot-scope="scope">
-          <el-link type="primary" @click="goQuestionList(scope.row)">{{
-            scope.row.question_count
-          }}</el-link>
-        </template>
-      </el-table-column>
       <el-table-column label="已考学生数">
         <template slot-scope="scope">
           <el-link type="primary" @click="goStudentList(scope.row)">{{
@@ -21,7 +14,16 @@
           }}</el-link>
         </template>
       </el-table-column>
-       <el-table-column align="center" label="Actions" width="120">
+       <el-table-column align="center" label="题目" width="120">
+        <template slot-scope="scope">
+          <router-link :to="'/exam/questionlist/'+scope.row.id">
+            <el-button type="primary" size="small" icon="el-icon-edit">
+              题目管理
+            </el-button>
+          </router-link>
+        </template>
+      </el-table-column>
+       <el-table-column align="center" label="管理" width="120">
         <template slot-scope="scope">
           <router-link :to="'/exam/editexam/'+scope.row.id">
             <el-button type="primary" size="small" icon="el-icon-edit">
@@ -29,6 +31,7 @@
             </el-button>
           </router-link>
         </template>
+    
       </el-table-column>
     </el-table>
     <el-pagination
@@ -87,7 +90,8 @@ export default {
       );
     },
     goQuestionList(row) {
-      this.$router.push({ path: `/exam/questionlist/${row.id}` });
+      this.$router.push({ path: `/exam/questionlist/
+      ${row.id}` });
     },
     goStudentList(row) {
       this.$router.push({ path: `/exam/studentlist/${row.id}` });
