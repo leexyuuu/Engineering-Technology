@@ -326,7 +326,7 @@ const asyncRoutes = [
         meta: { title: '考试管理', icon: 'list' }
       },
       {
-        path: 'editexam/:id(\\d+)?',
+        path: 'editexam/:id(\\s+)?',
         component: 'views/exam/editexam',
         name: '编辑考试',
         meta: { title: '编辑考试', noCache: true},

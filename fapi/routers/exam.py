@@ -295,12 +295,27 @@ def read_exams(page: int = 1, page_size: int = 20, db: Session = Depends(get_db)
     return {"code":20000,"data":{"total":total,"items": exams}}
 
 
-@app.get("/exams/{exam_id}", response_model=ExamResponse)
+@app.get("/exam/{exam_id}")
 def read_exam(exam_id: str, db: Session = Depends(get_db)):
     exam = db.query(Exam).filter(Exam.id == exam_id).first()
     if exam is None:
         raise HTTPException(status_code=404, detail="Exam not found")
-    return exam
+    return {"code":20000,"data":exam}
+
+
+@app.put("/exam/{exam_id}")
+def update_exam(exam_id: str, exam: ExamCreate=Depends(),token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
+    checkToken(token)
+    db_exam = db.query(Exam).filter(Exam.id == exam_id).first()
+    if db_exam is None:
+        raise HTTPException(status_code=404, detail="Exam not found")
+    for key, value in exam.dict(exclude_unset=True).items():
+        setattr(db_exam, key, value)
+    
+    db.commit()
+    db.refresh(db_exam)
+    return {"code":20000,"data":db_exam}
+
 
 # 题目相关接口
 @app.post("/questions/", response_model=QuestionResponse)
