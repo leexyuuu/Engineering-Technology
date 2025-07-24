@@ -7,7 +7,8 @@
         <h1 class="page-title">试题单</h1>
       </div>
       <div class="header-right">
-        <span class="user-info">X ceshi_001姓名:测试|座位号:1</span>
+        <span class="user-info">姓名: 13916057361</span>
+        <span class="timer">{{ formatTime(remainingTime) }}</span>
       </div>
     </header>
 
@@ -166,13 +167,18 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
 const currentQuestion = ref(3)
 const activeTab = ref('upload')
+
+// 倒计时相关
+const totalTime = 90 * 60 // 1小时30分钟 = 90分钟 = 5400秒
+const remainingTime = ref(totalTime)
+let timer = null
 
 const uploadFiles = ref([
   '2.2.3_model.pki',
@@ -218,10 +224,49 @@ const submitExam = () => {
   // 这里可以添加交卷逻辑
   if (confirm('确定要交卷吗？交卷后将无法修改答案。')) {
     alert('考试完成！感谢您的参与。')
+    // 停止倒计时
+    if (timer) {
+      clearInterval(timer)
+    }
     // 跳转回登录页面
     router.push('/')
   }
 }
+
+// 格式化时间显示
+const formatTime = (seconds) => {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+  
+  return `${hours.toString().padStart(2, '0')}时${minutes.toString().padStart(2, '0')}分${secs.toString().padStart(2, '0')}秒`
+}
+
+// 开始倒计时
+const startTimer = () => {
+  timer = setInterval(() => {
+    if (remainingTime.value > 0) {
+      remainingTime.value--
+    } else {
+      // 时间到，自动交卷
+      clearInterval(timer)
+      alert('考试时间已到，系统将自动交卷！')
+      router.push('/')
+    }
+  }, 1000)
+}
+
+// 组件挂载时开始倒计时
+onMounted(() => {
+  startTimer()
+})
+
+// 组件卸载时清理定时器
+onUnmounted(() => {
+  if (timer) {
+    clearInterval(timer)
+  }
+})
 </script>
 
 <style scoped>
@@ -269,13 +314,24 @@ const submitExam = () => {
 .page-title {
   font-size: 18px;
   font-weight: bold;
-  color: #3498db;
+  color: #FF3355;
   margin: 0;
 }
 
 .user-info {
   font-size: 14px;
   color: #666;
+  margin-right: 20px;
+}
+
+.timer {
+  font-size: 14px;
+  color: #FF3355;
+  font-weight: bold;
+  background: #fff5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #FF3355;
 }
 
 .exam-main {
@@ -316,8 +372,8 @@ const submitExam = () => {
 }
 
 .tab-btn.active {
-  color: #3498db;
-  border-bottom-color: #3498db;
+  color: #FF3355;
+  border-bottom-color: #FF3355;
   background: white;
 }
 
@@ -462,8 +518,8 @@ const submitExam = () => {
 }
 
 .upload-tab-btn.active {
-  color: #3498db;
-  border-bottom-color: #3498db;
+  color: #FF3355;
+  border-bottom-color: #FF3355;
   background: white;
 }
 
@@ -541,12 +597,12 @@ const submitExam = () => {
 }
 
 .file-input-label:hover {
-  background: #2980b9;
+  background: #E62A4A;
 }
 
 .upload-btn {
   padding: 4px 8px;
-  background: #3498db;
+  background: #FF3355;
   color: white;
   border: none;
   border-radius: 3px;
@@ -558,7 +614,7 @@ const submitExam = () => {
 }
 
 .upload-btn:hover {
-  background: #229954;
+  background: #E62A4A;
 }
 
 .upload-arrow-btn {
@@ -635,7 +691,7 @@ const submitExam = () => {
 
 .nav-btn {
   padding: 12px 30px;
-  border: 2px solid #3498db;
+  border: 2px solid #FF3355;
   border-radius: 6px;
   font-size: 16px;
   font-weight: bold;
@@ -646,22 +702,22 @@ const submitExam = () => {
 
 .prev-btn {
   background: white;
-  color: #3498db;
+  color: #FF3355;
 }
 
 .prev-btn:hover:not(:disabled) {
-  background: #3498db;
+  background: #FF3355;
   color: white;
 }
 
 .next-btn {
-  background: #3498db;
+  background: #FF3355;
   color: white;
 }
 
 .next-btn:hover:not(:disabled) {
-  background: #2980b9;
-  border-color: #2980b9;
+  background: #E62A4A;
+  border-color: #E62A4A;
 }
 
 .nav-btn:disabled {
