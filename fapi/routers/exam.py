@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from typing import List, Optional
-from pydantic import BaseModel,Field
+from pydantic import BaseModel,Field,ConfigDict 
 from models import engine, Exam, Question, SubQuestion, Option, Student, StudentExam, StudentAnswer
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -11,6 +11,7 @@ from base import app,get_db
 from fastapi.exceptions import RequestValidationError
 import os
 import uuid
+import json
 from admin import checkToken
 from jose import JWTError, jwt
 import shutil
@@ -85,11 +86,15 @@ class QuestionResponse(BaseModel):
 
 class OptionCreate(BaseModel):
     content: str
+    uuid:str
+    subq_uuid:str
     is_correct: bool = False
 
 class SubQuestionCreate(BaseModel):
     order: int
     content: str
+    uuid:str
+    q_uuid:str
     question_type: str
     score: float
     options: Optional[List[OptionCreate]]
@@ -98,10 +103,12 @@ class SubQuestionCreate(BaseModel):
 class QuestionCreate(BaseModel):
     exam_id: str
     order: int
+    uuid:str
     content: str
     requires_file: bool
     file_description: Optional[str] 
-    sub_questions_str: str
+    sub_questions_str: Optional[str]
+    
 
 class SubQuestionResponse(BaseModel):
     id: str
@@ -347,6 +354,9 @@ def update_exam(exam_id: str, exam: ExamCreate=Depends(),token: str = Header(...
     db.refresh(db_exam)
     return {"code":20000,"data":db_exam}
 
+
+
+
 @app.middleware("http")
 async def add_cors_headers(request: Request, call_next):
     response = await call_next(request)
@@ -360,9 +370,11 @@ async def add_cors_headers(request: Request, call_next):
 def create_question(question: QuestionCreate=Depends(), token: str = Header(..., alias="Authorization"), db: Session = Depends(get_db)):
     checkToken(token)
     db_question = Question(**question.dict(exclude={"sub_questions_str"}))
+    db_question.sub_questions=str_to_sub_questions(question.sub_questions_str)
     db.add(db_question)
     db.commit()
     db.refresh(db_question)
+
     return {"code":20000,"data":db_question}
 
 @app.get("/questions/{question_id}")
@@ -385,6 +397,20 @@ def create_subquestion(subquestion: SubQuestionCreate, db: Session = Depends(get
     db.commit()
     db.refresh(db_subquestion)
     return db_subquestion
+    
+# 转换函数：将字符串转换为SubQuestionCreate列表
+def str_to_sub_questions(strs: str) -> Optional[List[SubQuestionCreate]]:
+    try:
+        # 解析JSON字符串
+        data = json.loads(strs)
+        
+        # 验证并转换为SubQuestionCreate列表
+        sub_questions = [SubQuestionCreate(**item) for item in data]
+        return sub_questions
+    except json.JSONDecodeError:
+       return []
+    except Exception as e:
+       return []
 
 @app.get("/questions/{question_id}/subquestions")
 def read_question_subquestions(question_id: str, db: Session = Depends(get_db)):

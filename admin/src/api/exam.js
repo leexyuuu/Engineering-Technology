@@ -90,7 +90,7 @@ export function fetchExamQuestion(exam_id, question_id) {
 
 export function createExamQuestion(data) {
   return request({
-    url:  '/api/exam/questions/create',
+    url: '/api/exam/questions/create',
     method: 'post',
     params:data
   })

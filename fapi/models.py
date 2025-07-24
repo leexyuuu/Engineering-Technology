@@ -169,7 +169,7 @@ class Exam(Base):
 class Question(Base):
     __tablename__ = "questions"
     
-    id = Column(String, primary_key=True, default=generate_uuid)
+    uuid = Column(String, primary_key=True)
 
     exam_id = Column(String, ForeignKey("exams.id"), nullable=False)
     order = Column(Integer, nullable=False)  # 题目顺序
@@ -184,9 +184,9 @@ class Question(Base):
 class SubQuestion(Base):
     __tablename__ = "sub_questions"
     
-    id = Column(String, primary_key=True, default=generate_uuid)
+    uuid = Column(String, primary_key=True)
 
-    question_id = Column(String, ForeignKey("questions.id"), nullable=False)
+    q_uuid = Column(String, ForeignKey("questions.uuid"), nullable=False)
     order = Column(Integer, nullable=False)  # 子问题顺序
     content = Column(Text, nullable=False)
     question_type = Column(String(20), nullable=False)  # "single_choice", "multiple_choice", "text"
@@ -199,9 +199,9 @@ class SubQuestion(Base):
 class Option(Base):
     __tablename__ = "options"
     
-    id = Column(String, primary_key=True, default=generate_uuid)
+    uuid= Column(String, primary_key=True)
 
-    sub_question_id = Column(String, ForeignKey("sub_questions.id"), nullable=False)
+    subq_uuid= Column(String, ForeignKey("sub_questions.uuid"), nullable=False)
     content = Column(Text, nullable=False)
     is_correct = Column(Boolean, default=False)
     
@@ -242,8 +242,8 @@ class StudentAnswer(Base):
     
     id = Column(String, primary_key=True, default=generate_uuid)
     student_exam_id = Column(String, ForeignKey("student_exams.id"), nullable=False)
-    question_id = Column(String, ForeignKey("questions.id"), nullable=False)
-    sub_question_id = Column(String, ForeignKey("sub_questions.id"), nullable=False)
+    question_id = Column(String, ForeignKey("questions.uuid"), nullable=False)
+    sub_question_id = Column(String, ForeignKey("sub_questions.uuid"), nullable=False)
     answer_text = Column(Text)  # 用于填空题
     file_url = Column(String(255))  # 文件题的文件URL
     is_correct = Column(Boolean)  # 自动判题的题目是否正确
@@ -253,7 +253,7 @@ class StudentAnswer(Base):
     sub_question = relationship("SubQuestion", back_populates="student_answers")
 
 # 创建所有表
-Base.metadata.create_all(bind=engine)
+#Base.metadata.create_all(bind=engine)
     
 
 

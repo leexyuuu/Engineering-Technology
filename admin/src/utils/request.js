@@ -15,7 +15,7 @@ const service = axios.create({
 service.httpPost = function httpPost(url,data){
 
   return new Promise((resolve,reject)=>{  
-    console.log('httpPost'+qs.stringify(data)) // for debug
+   // console.log('httpPost'+qs.stringify(data)) // for debug
     service.post(url,data).then(response=>{
           resolve(response.data)
       })

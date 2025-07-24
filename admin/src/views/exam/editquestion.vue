@@ -14,7 +14,7 @@
         <el-input v-model="form.file_description" type="textarea" :autosize="{ minRows: 1, maxRows: 4 }" />
       </el-form-item>
       <el-form-item label="子问题列表">
-        <div v-for="(sub, idx) in form.sub_questions" :key="sub._uuid" style="margin-bottom: 24px; border: 1px solid #eee; padding: 16px; border-radius: 4px;">
+        <div v-for="(sub, idx) in form.sub_questions" :key="sub.uuid" style="margin-bottom: 24px; border: 1px solid #eee; padding: 16px; border-radius: 4px;">
           <el-row :gutter="16">
             <el-col :span="6">
               <el-form-item :label="'顺序'" :prop="'sub_questions.'+idx+'.order'">
@@ -45,7 +45,7 @@
             <el-col :span="18">
               <div v-if="sub.question_type==='single_choice'||sub.question_type==='multiple_choice'">
                 <el-form-item label="选项">
-                  <div v-for="(opt, oidx) in sub.options" :key="opt._uuid" style="display:flex;align-items:center;margin-bottom:5px;">
+                  <div v-for="(opt, oidx) in sub.options" :key="opt.uuid" style="display:flex;align-items:center;margin-bottom:5px;">
                     <el-input v-model="opt.content" placeholder="选项内容" style="width:200px;" />
                     <el-checkbox v-model="opt.is_correct" style="margin-left:10px;">正确</el-checkbox>
                     <el-button type="text" @click="removeOption(idx, oidx)">删除</el-button>
@@ -79,9 +79,9 @@ export default {
         order: 1,
         content: '',
         exam_id:'',
+        uuid: uuid(),
         requires_file: false,
         file_description: '',
-        sub_questions_str: '',
         sub_questions: []
       },
       rules: {
@@ -99,12 +99,7 @@ export default {
       fetchExamQuestion(this.exam_id, this.question_id).then(res => {
         const data = res.data || res
         this.form = {
-          ...data,
-          sub_questions: (data.sub_questions || []).map(sq => ({
-            ...sq,
-            _uuid: uuid(),
-            options: (sq.options || []).map(opt => ({ ...opt, _uuid: uuid() }))
-          }))
+          ...data
         }
       })
     }
@@ -115,9 +110,10 @@ export default {
         order: this.form.sub_questions.length + 1,
         content: '',
         question_type: '',
+        q_uuid:this.form.uuid,
         score: 1,
         options: [],
-        _uuid: uuid()
+        uuid: uuid()
       })
     },
     removeSubQuestion(idx) {
@@ -126,7 +122,7 @@ export default {
     addOption(subIdx) {
       const sub = this.form.sub_questions[subIdx]
       if (!sub.options) this.$set(sub, 'options', [])
-      sub.options.push({ content: '', is_correct: false, _uuid: uuid() })
+      sub.options.push({ content: '', is_correct: false, uuid: uuid(),subq_uuid:sub.uuid })
     },
     removeOption(subIdx, optIdx) {
       this.form.sub_questions[subIdx].options.splice(optIdx, 1)
@@ -137,15 +133,10 @@ export default {
         // 提交时去除uuid辅助字段
         const submitData = {
           ...this.form,
-          sub_questions_str: JSON.stringify(this.form.sub_questions.map(sq => ({
-            ...sq,
-            options: (sq.options || []).map(opt => ({
-              content: opt.content,
-              is_correct: opt.is_correct
-            }))
-          })))
+          sub_questions_str: JSON.stringify(this.form.sub_questions)
         }
         submitData.sub_questions=null
+
         const action = this.question_id ? updateExamQuestion(this.question_id, submitData) : createExamQuestion(submitData)
         action.then(() => {
           this.$message.success('保存成功')
