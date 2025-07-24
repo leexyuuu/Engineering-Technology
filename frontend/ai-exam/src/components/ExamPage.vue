@@ -134,9 +134,6 @@
             </table>
           </div>
 
-          <div class="submit-section">
-            <button class="submit-btn">提交</button>
-          </div>
         </div>
 
         <!-- 素材下载内容 -->
@@ -145,11 +142,34 @@
         </div>
       </div>
     </main>
+
+    <!-- 底部导航按钮 -->
+    <footer class="exam-footer">
+      <div class="navigation-buttons">
+        <button 
+          class="nav-btn prev-btn" 
+          @click="goToPreviousQuestion"
+          :disabled="currentQuestion <= 1"
+        >
+          上一题
+        </button>
+        <button 
+          class="nav-btn next-btn" 
+          @click="currentQuestion >= 6 ? submitExam() : goToNextQuestion()"
+          :disabled="false"
+        >
+          {{ currentQuestion >= 6 ? '交卷' : '下一题' }}
+        </button>
+      </div>
+    </footer>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const currentQuestion = ref(3)
 const activeTab = ref('upload')
@@ -180,6 +200,28 @@ const fileStatuses = ref({
   4: 'not-uploaded',
   5: 'not-uploaded'
 })
+
+// 导航方法
+const goToPreviousQuestion = () => {
+  if (currentQuestion.value > 1) {
+    currentQuestion.value--
+  }
+}
+
+const goToNextQuestion = () => {
+  if (currentQuestion.value < 6) {
+    currentQuestion.value++
+  }
+}
+
+const submitExam = () => {
+  // 这里可以添加交卷逻辑
+  if (confirm('确定要交卷吗？交卷后将无法修改答案。')) {
+    alert('考试完成！感谢您的参与。')
+    // 跳转回登录页面
+    router.push('/')
+  }
+}
 </script>
 
 <style scoped>
@@ -566,32 +608,73 @@ const fileStatuses = ref({
   color: #155724;
 }
 
-.submit-section {
-  margin-top: 30px;
-  text-align: center;
-}
 
-.submit-btn {
-  padding: 12px 40px;
-  background: #3498db;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.submit-btn:hover {
-  background: #2980b9;
-}
 
 .download-content {
   display: flex;
   align-items: center;
   justify-content: center;
   color: #666;
+}
+
+/* 底部导航按钮样式 */
+.exam-footer {
+  background: white;
+  border-top: 1px solid #e0e0e0;
+  padding: 15px 20px;
+  box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+}
+
+.navigation-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.nav-btn {
+  padding: 12px 30px;
+  border: 2px solid #3498db;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+}
+
+.prev-btn {
+  background: white;
+  color: #3498db;
+}
+
+.prev-btn:hover:not(:disabled) {
+  background: #3498db;
+  color: white;
+}
+
+.next-btn {
+  background: #3498db;
+  color: white;
+}
+
+.next-btn:hover:not(:disabled) {
+  background: #2980b9;
+  border-color: #2980b9;
+}
+
+.nav-btn:disabled {
+  background: #f8f9fa;
+  border-color: #dee2e6;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.nav-btn:disabled:hover {
+  background: #f8f9fa;
+  border-color: #dee2e6;
+  color: #6c757d;
 }
 
 
