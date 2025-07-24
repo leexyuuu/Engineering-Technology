@@ -148,7 +148,7 @@ const handleLogin = () => {
 .logo-circle {
   width: 80px;
   height: 80px;
-  background: #e74c3c;
+  background: #FF3355;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -166,7 +166,7 @@ const handleLogin = () => {
   font-size: 28px;
   font-weight: bold;
   margin: 0 0 10px 0;
-  color: #e74c3c;
+  color: #FF3355;
 }
 
 .exam-title {
@@ -222,7 +222,7 @@ const handleLogin = () => {
 
 .form-input:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: #FF3355;
 }
 
 .password-input-container {
@@ -248,7 +248,7 @@ const handleLogin = () => {
 .login-button {
   width: 100%;
   padding: 14px;
-  background: #3498db;
+  background: #FF3355;
   color: white;
   border: none;
   border-radius: 8px;
@@ -259,7 +259,7 @@ const handleLogin = () => {
 }
 
 .login-button:hover:not(:disabled) {
-  background: #2980b9;
+  background: #E62A4A;
 }
 
 .login-button:disabled {
