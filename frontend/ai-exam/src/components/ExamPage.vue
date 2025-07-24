@@ -30,55 +30,33 @@
 
         <!-- 题目内容 -->
         <div class="question-content">
-          <h2 class="exam-title">人工智能训练师三级</h2>
+          <h2 class="exam-title">{{ currentQuestionData.title }}</h2>
           
           <div class="question-info">
             <div class="info-item">
               <span class="label">试题代码:</span>
-              <span class="value">2.2.3</span>
+              <span class="value">{{ currentQuestionData.code }}</span>
             </div>
             <div class="info-item">
               <span class="label">试题名称:</span>
-              <span class="value">日常运动量随机森林预测模型开发与测试</span>
+              <span class="value">{{ currentQuestionData.name }}</span>
             </div>
             <div class="info-item">
               <span class="label">考试时间:</span>
-              <span class="value">20min</span>
+              <span class="value">{{ currentQuestionData.time }}</span>
             </div>
           </div>
 
           <div class="requirements">
             <h3>场地要求:</h3>
             <ul>
-              <li>人工智能训练师主机1台;</li>
-              <li>Python 编译环境;</li>
-              <li>fitness analysis数据集。</li>
+              <li v-for="requirement in currentQuestionData.requirements" :key="requirement">{{ requirement }}</li>
             </ul>
           </div>
 
           <div class="work-content">
             <h3>工作内容:</h3>
-            <p>随着人们健康意识的增强，越来越多的人开始关注日常运动和健康管理。使用提供的训练数据，补全2.2.3.ipynb代码。选择合适的特征，开发一个预测模型，基于个体性别，个体对运动的看法和个人健康评价来预测个体年龄。利用测试工具对模型进行测试，并对测试结果进行分析，完成测试报告，并运用工具对错误原因进行纠正。</p>
-          </div>
-
-          <div class="detailed-description">
-            <h3>详细说明如下:</h3>
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>变量名</th>
-                  <th>描述</th>
-                  <th>类型</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Timestamp</td>
-                  <td>记录条目时间</td>
-                  <td>datetime</td>
-                </tr>
-              </tbody>
-            </table>
+            <p>{{ currentQuestionData.workContent }}</p>
           </div>
         </div>
       </div>
@@ -120,7 +98,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(file, index) in uploadFiles" :key="index">
+                <tr v-for="(file, index) in currentQuestionData.uploadFiles" :key="index">
                   <td>{{ index + 1 }}</td>
                   <td>上传{{ file }}</td>
                   <td>
@@ -139,7 +117,33 @@
 
         <!-- 素材下载内容 -->
         <div v-if="activeTab === 'download'" class="download-content">
-          <p>素材下载功能开发中...</p>
+          <h3 class="download-title">文件列表</h3>
+          <div class="download-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>序号</th>
+                  <th>文件名</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(file, index) in downloadFiles" :key="index">
+                  <td>{{ index + 1 }}</td>
+                  <td>{{ file.name }}</td>
+                  <td>
+                    <button class="download-btn" @click="downloadFile(file)">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7,10 12,15 17,10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </main>
@@ -167,12 +171,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-const currentQuestion = ref(3)
+const currentQuestion = ref(1)
 const activeTab = ref('upload')
 
 // 倒计时相关
@@ -180,14 +184,137 @@ const totalTime = 90 * 60 // 1小时30分钟 = 90分钟 = 5400秒
 const remainingTime = ref(totalTime)
 let timer = null
 
-const uploadFiles = ref([
-  '2.2.3_model.pki',
-  '2.2.3_results.txt',
-  '2.2.3_report.txt',
-  '2.2.3.docx',
-  '2.2.3_results_xgb.txt',
-  '2.2.3.html'
+// 题目数据
+const questions = ref([
+  {
+    id: 1,
+    title: '人工智能训练师三级',
+    code: '2.2.3',
+    name: '日常运动量随机森林预测模型开发与测试',
+    time: '20min',
+    requirements: [
+      '人工智能训练师主机1台;',
+      'Python 编译环境;',
+      'fitness analysis数据集。'
+    ],
+    workContent: '随着人们健康意识的增强，越来越多的人开始关注日常运动和健康管理。使用提供的训练数据，补全2.2.3.ipynb代码。选择合适的特征，开发一个预测模型，基于个体性别，个体对运动的看法和个人健康评价来预测个体年龄。利用测试工具对模型进行测试，并对测试结果进行分析，完成测试报告，并运用工具对错误原因进行纠正。',
+    uploadFiles: [
+      '2.2.3_model.pki',
+      '2.2.3_results.txt',
+      '2.2.3_report.txt',
+      '2.2.3.docx',
+      '2.2.3_results_xgb.txt',
+      '2.2.3.html'
+    ]
+  },
+  {
+    id: 2,
+    title: '人工智能训练师三级',
+    code: '2.2.4',
+    name: '电商用户行为分析模型构建',
+    time: '25min',
+    requirements: [
+      '人工智能训练师主机1台;',
+      'Python 编译环境;',
+      'ecommerce_behavior.csv数据集。'
+    ],
+    workContent: '电商平台需要分析用户行为模式以优化推荐系统。使用提供的电商用户行为数据，构建一个用户行为分析模型。分析用户的浏览、收藏、加购、购买等行为特征，建立用户画像模型，预测用户的购买概率。完成模型训练、验证和测试，并生成详细的分析报告。',
+    uploadFiles: [
+      '2.2.4_model.pkl',
+      '2.2.4_analysis.txt',
+      '2.2.4_report.txt',
+      '2.2.4_presentation.pptx',
+      '2.2.4_visualization.html'
+    ]
+  },
+  {
+    id: 3,
+    title: '人工智能训练师三级',
+    code: '2.2.5',
+    name: '图像分类CNN模型开发',
+    time: '30min',
+    requirements: [
+      '人工智能训练师主机1台;',
+      'Python 编译环境;',
+      'image_classification数据集。'
+    ],
+    workContent: '使用卷积神经网络(CNN)技术，开发一个图像分类模型。数据集包含多个类别的图像，需要构建CNN架构，进行数据预处理、模型训练和优化。实现数据增强技术，提高模型泛化能力。完成模型评估，生成分类报告和可视化结果。',
+    uploadFiles: [
+      '2.2.5_cnn_model.h5',
+      '2.2.5_training_log.txt',
+      '2.2.5_evaluation.txt',
+      '2.2.5_classification_report.txt',
+      '2.2.5_visualization.py'
+    ]
+  },
+  {
+    id: 4,
+    title: '人工智能训练师三级',
+    code: '2.2.6',
+    name: '自然语言处理文本分类',
+    time: '25min',
+    requirements: [
+      '人工智能训练师主机1台;',
+      'Python 编译环境;',
+      'text_classification.csv数据集。'
+    ],
+    workContent: '构建一个自然语言处理模型，用于文本分类任务。使用提供的文本数据集，实现文本预处理、特征提取和模型训练。应用词向量技术，构建深度学习模型进行文本分类。完成模型性能评估，生成分类准确率报告和错误分析。',
+    uploadFiles: [
+      '2.2.6_nlp_model.pkl',
+      '2.2.6_preprocessing.py',
+      '2.2.6_classification_results.txt',
+      '2.2.6_accuracy_report.txt',
+      '2.2.6_error_analysis.txt'
+    ]
+  },
+  {
+    id: 5,
+    title: '人工智能训练师三级',
+    code: '2.2.7',
+    name: '时间序列预测模型开发',
+    time: '20min',
+    requirements: [
+      '人工智能训练师主机1台;',
+      'Python 编译环境;',
+      'time_series_data.csv数据集。'
+    ],
+    workContent: '开发一个时间序列预测模型，用于预测未来趋势。使用提供的时间序列数据，实现数据清洗、特征工程和模型构建。应用ARIMA、LSTM等时间序列预测技术，完成模型训练和验证。生成预测结果和模型性能评估报告。',
+    uploadFiles: [
+      '2.2.7_arima_model.pkl',
+      '2.2.7_lstm_model.h5',
+      '2.2.7_predictions.csv',
+      '2.2.7_forecast_report.txt',
+      '2.2.7_model_comparison.txt'
+    ]
+  },
+  {
+    id: 6,
+    title: '人工智能训练师三级',
+    code: '2.2.8',
+    name: '推荐系统协同过滤算法实现',
+    time: '25min',
+    requirements: [
+      '人工智能训练师主机1台;',
+      'Python 编译环境;',
+      'recommendation_data.csv数据集。'
+    ],
+    workContent: '实现协同过滤推荐算法，构建个性化推荐系统。使用用户-物品交互数据，实现基于用户的协同过滤和基于物品的协同过滤算法。完成相似度计算、推荐生成和模型评估。生成推荐系统性能报告和用户推荐结果分析。',
+    uploadFiles: [
+      '2.2.8_user_cf_model.pkl',
+      '2.2.8_item_cf_model.pkl',
+      '2.2.8_recommendations.csv',
+      '2.2.8_performance_report.txt',
+      '2.2.8_user_analysis.txt'
+    ]
+  }
 ])
+
+// 计算当前题目数据
+const currentQuestionData = computed(() => {
+  return questions.value.find(q => q.id === currentQuestion.value) || questions.value[0]
+})
+
+
 
 const fileSizes = ref({
   0: '0KB',
@@ -206,6 +333,13 @@ const fileStatuses = ref({
   4: 'not-uploaded',
   5: 'not-uploaded'
 })
+
+// 下载文件列表
+const downloadFiles = ref([
+  { name: '2.2.3.ipynb', url: '#' },
+  { name: '2.2.3.docx', url: '#' },
+  { name: 'fitness analysis.csv', url: '#' }
+])
 
 // 导航方法
 const goToPreviousQuestion = () => {
@@ -240,6 +374,24 @@ const formatTime = (seconds) => {
   const secs = seconds % 60
   
   return `${hours.toString().padStart(2, '0')}时${minutes.toString().padStart(2, '0')}分${secs.toString().padStart(2, '0')}秒`
+}
+
+// 下载文件方法
+const downloadFile = (file) => {
+  // 这里可以添加实际的下载逻辑
+  console.log(`开始下载文件: ${file.name}`)
+  
+  // 模拟下载过程
+  const link = document.createElement('a')
+  link.href = file.url
+  link.download = file.name
+  link.style.display = 'none'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  
+  // 显示下载提示
+  alert(`文件 ${file.name} 开始下载`)
 }
 
 // 开始倒计时
@@ -665,12 +817,80 @@ onUnmounted(() => {
 }
 
 
-
 .download-content {
+  padding: 20px;
+  color: #666;
+}
+
+.download-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.download-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.download-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.download-table th,
+.download-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border: 1px solid #e0e0e0;
+}
+
+.download-table th:nth-child(1) { width: 60px; }
+.download-table th:nth-child(2) { width: 200px; }
+.download-table th:nth-child(3) { width: 80px; }
+
+.download-table th {
+  background: #f8f9fa;
+  font-weight: bold;
+  color: #333;
+  font-size: 14px;
+}
+
+.download-table td {
+  color: #666;
+  font-size: 14px;
+}
+
+.download-table tr:hover {
+  background: #f8f9fa;
+}
+
+.download-btn {
+  background: #FF3355;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #666;
+}
+
+.download-btn:hover {
+  background: #E62A4A;
+}
+
+.download-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* 底部导航按钮样式 */
