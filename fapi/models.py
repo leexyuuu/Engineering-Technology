@@ -169,43 +169,18 @@ class Exam(Base):
 class Question(Base):
     __tablename__ = "questions"
     
-    uuid = Column(String, primary_key=True)
+    id = Column(String, primary_key=True,default=generate_uuid())
 
     exam_id = Column(String, ForeignKey("exams.id"), nullable=False)
     order = Column(Integer, nullable=False)  # 题目顺序
     content = Column(Text, nullable=False)
     requires_file = Column(Boolean, default=False)
     file_description = Column(Text)
-    
+    uuid = Column(Text)
+    sub_questions_str = Column(Text().with_variant(Text(4294967295), 'mysql')) 
     exam = relationship("Exam", back_populates="questions")
-    sub_questions = relationship("SubQuestion", back_populates="question", cascade="all, delete-orphan")
-    student_answers = relationship("StudentAnswer", back_populates="question", cascade="all, delete-orphan")
-
-class SubQuestion(Base):
-    __tablename__ = "sub_questions"
     
-    uuid = Column(String, primary_key=True)
 
-    q_uuid = Column(String, ForeignKey("questions.uuid"), nullable=False)
-    order = Column(Integer, nullable=False)  # 子问题顺序
-    content = Column(Text, nullable=False)
-    question_type = Column(String(20), nullable=False)  # "single_choice", "multiple_choice", "text"
-    score = Column(Float, default=1.0)  # 题目分值
-    
-    question = relationship("Question", back_populates="sub_questions")
-    options = relationship("Option", back_populates="sub_question", cascade="all, delete-orphan")
-    student_answers = relationship("StudentAnswer", back_populates="sub_question", cascade="all, delete-orphan")
-
-class Option(Base):
-    __tablename__ = "options"
-    
-    uuid= Column(String, primary_key=True)
-
-    subq_uuid= Column(String, ForeignKey("sub_questions.uuid"), nullable=False)
-    content = Column(Text, nullable=False)
-    is_correct = Column(Boolean, default=False)
-    
-    sub_question = relationship("SubQuestion", back_populates="options")
 
 class Student(Base):
     __tablename__ = "students"
@@ -242,15 +217,11 @@ class StudentAnswer(Base):
     
     id = Column(String, primary_key=True, default=generate_uuid)
     student_exam_id = Column(String, ForeignKey("student_exams.id"), nullable=False)
-    question_id = Column(String, ForeignKey("questions.uuid"), nullable=False)
-    sub_question_id = Column(String, ForeignKey("sub_questions.uuid"), nullable=False)
     answer_text = Column(Text)  # 用于填空题
     file_url = Column(String(255))  # 文件题的文件URL
     is_correct = Column(Boolean)  # 自动判题的题目是否正确
     
     student_exam = relationship("StudentExam", back_populates="answers")
-    question = relationship("Question", back_populates="student_answers")
-    sub_question = relationship("SubQuestion", back_populates="student_answers")
 
 # 创建所有表
 #Base.metadata.create_all(bind=engine)

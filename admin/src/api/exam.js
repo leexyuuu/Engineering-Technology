@@ -73,17 +73,16 @@ export function deleteExamStudent(exam_id, student_id) {
 }
 
 // 题目相关API
-export function fetchExamQuestionList(exam_id, data) {
+export function fetchExamQuestionList(exam_id) {
   return request({
     url: `/api/exam/${exam_id}/questions`,
-    method: 'get',
-    params:data
+    method: 'get'
   })
 }
 
 export function fetchExamQuestion(exam_id, question_id) {
   return request({
-    url: `/api/exam/${exam_id}/questions/${question_id}`,
+    url: `/api/exam/questions/${question_id}`,
     method: 'get'
   })
 }

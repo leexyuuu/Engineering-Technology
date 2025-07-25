@@ -1,10 +1,11 @@
+
 from fastapi import Body,Depends, Request,HTTPException, status, UploadFile, File, Form, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel,Field,ConfigDict 
-from models import engine, Exam, Question, SubQuestion, Option, Student, StudentExam, StudentAnswer
+from models import engine, Exam, Question, Student, StudentExam, StudentAnswer
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from base import app,get_db
@@ -369,25 +370,95 @@ async def add_cors_headers(request: Request, call_next):
 @app.post("/exam/questions/create")
 def create_question(question: QuestionCreate=Depends(), token: str = Header(..., alias="Authorization"), db: Session = Depends(get_db)):
     checkToken(token)
-    db_question = Question(**question.dict(exclude={"sub_questions_str"}))
-    db_question.sub_questions=str_to_sub_questions(question.sub_questions_str)
+    db_question = Question(**question.dict())
+   # db_question.sub_questions=str_to_sub_questions(question.sub_questions_str)
     db.add(db_question)
     db.commit()
     db.refresh(db_question)
 
     return {"code":20000,"data":db_question}
 
-@app.get("/questions/{question_id}")
+@app.put("/exam/questions/{question_id}")
+def update_questions(question_id: str, question: QuestionCreate=Depends(),token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
+    checkToken(token)
+    db_exam = db.query(Question).filter(Question.id == question_id).first()
+    if db_exam is None:
+        raise HTTPException(status_code=404, detail="Exam not found")
+    for key, value in question.dict(exclude_unset=True).items():
+        setattr(db_exam, key, value)
+    
+    db.commit()
+    db.refresh(db_exam)
+    return {"code":20000,"data":db_exam}
+
+def create_subquestions_bulk(
+    id:str,
+    subquestions: List[SubQuestionCreate],
+    db: Session = Depends(get_db)
+):
+    try:
+        # 创建子问题对象列表
+        subq_objs = []
+        for sq in subquestions:
+            # 创建子问题 ORM 实例（不包括 options 关系）
+            subq_obj = SubQuestion(
+                q_id=id,
+                order=sq.order,
+                content=sq.content,
+                question_type=sq.question_type,
+                score=sq.score
+            )
+            subq_objs.append(subq_obj)
+            
+            # 处理选项（如果存在）
+            if sq.options:
+                for opt in sq.options:
+                    # 验证选项属于当前子问题
+                    if opt.subq_uuid != sq.uuid:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Option {opt.uuid} belongs to wrong subquestion"
+                        )
+                    
+                    # 创建选项 ORM 实例
+                    opt_obj = Option(
+                        uuid=opt.uuid,
+                        subq_uuid=opt.subq_uuid,
+                        content=opt.content,
+                        is_correct=opt.is_correct
+                    )
+                    db.add(opt_obj)
+        
+        # 批量添加子问题
+        db.bulk_save_objects(subq_objs)
+        db.commit()
+        
+        # 刷新对象以获取数据库状态（如果需要返回完整数据）
+        for obj in subq_objs:
+            db.refresh(obj)
+            
+        return subquestions
+    
+    except Exception as e:
+       # db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating subquestions: {str(e)}"
+        )
+
+@app.get("/exam/questions/{question_id}")
 def read_question(question_id: str, db: Session = Depends(get_db)):
     question = db.query(Question).filter(Question.id == question_id).first()
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
-    return question
+    
+    return {"code":20000,"data":question}
 
-@app.get("/exams/{exam_id}/questions")
+@app.get("/exam/{exam_id}/questions")
 def read_exam_questions(exam_id: str, db: Session = Depends(get_db)):
     questions = db.query(Question).filter(Question.exam_id == exam_id).order_by(Question.order).all()
-    return questions
+    return {"code":20000,"data":{"items":  questions}}
+    
 
 # 子问题相关接口
 @app.post("/subquestions/")
@@ -408,9 +479,9 @@ def str_to_sub_questions(strs: str) -> Optional[List[SubQuestionCreate]]:
         sub_questions = [SubQuestionCreate(**item) for item in data]
         return sub_questions
     except json.JSONDecodeError:
-       return []
+       return None
     except Exception as e:
-       return []
+      return None
 
 @app.get("/questions/{question_id}/subquestions")
 def read_question_subquestions(question_id: str, db: Session = Depends(get_db)):

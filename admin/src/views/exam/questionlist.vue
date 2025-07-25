@@ -3,9 +3,9 @@
     <h3>考试：{{ examName }}</h3>
     <el-button type="primary" @click="handleAdd">添加题目</el-button>
     <el-table :data="questionList" style="width: 100%" v-loading="loading">
-      <el-table-column prop="id" label="ID" width="80" />
-      <el-table-column prop="title" label="题目标题" />
-      <el-table-column prop="type" label="题目类型" />
+      <el-table-column prop="uuid" label="id" width="80" />
+        <el-table-column prop="order" label="排序" width="80" />
+      <el-table-column prop="content" label="描述" />
       <el-table-column label="操作" width="180">
         <template slot-scope="scope">
           <el-button size="mini" @click="handleEdit(scope.row)">编辑</el-button>
@@ -13,14 +13,7 @@
         </template>
       </el-table-column>
     </el-table>
-    <el-pagination
-      background
-      layout="prev, pager, next"
-      :total="total"
-      :page-size="pageSize"
-      :current-page.sync="page"
-      @current-change="fetchList"
-    />
+   
   </div>
 </template>
 
@@ -31,9 +24,6 @@ export default {
     return {
       questionList: [],
       loading: false,
-      total: 0,
-      page: 1,
-      pageSize: 10,
       exam_id: null,
       examName: ''
     }
@@ -51,9 +41,9 @@ export default {
     },
     fetchList() {
       this.loading = true
-      fetchExamQuestionList(this.exam_id, { page: this.page, page_size: this.pageSize }).then(res => {
-        this.questionList = res.items || res.data || []
-        this.total = res.total || 0
+      fetchExamQuestionList(this.exam_id).then(res => {
+        this.questionList = res.data.items || []
+        console.log("this.questionList="+this.questionList)
         this.loading = false
       }).catch(() => { this.loading = false })
     },
