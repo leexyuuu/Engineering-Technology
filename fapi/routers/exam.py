@@ -391,6 +391,18 @@ def update_questions(question_id: str, question: QuestionCreate=Depends(),token:
     db.refresh(db_exam)
     return {"code":20000,"data":db_exam}
 
+@app.delete("/exam/questions/{question_id}")
+def delete_question(question_id: str,token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
+    checkToken(token)
+    db_area = db.query(Question).filter(Question.id == question_id).first()
+    if db_area is None:
+        raise HTTPException(status_code=404, detail="question not found")
+    
+    db.delete(db_area)
+    db.commit()
+    return {"code":20000,"data":db_area}
+
+
 def create_subquestions_bulk(
     id:str,
     subquestions: List[SubQuestionCreate],

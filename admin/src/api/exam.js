@@ -103,9 +103,9 @@ export function updateExamQuestion(question_id, data) {
   })
 }
 
-export function deleteExamQuestion(exam_id, question_id) {
+export function deleteExamQuestion(question_id) {
   return request({
-    url: `/api/exam/${exam_id}/questions/${question_id}`,
+    url: `/api/exam/questions/${question_id}`,
     method: 'delete'
   })
 }
