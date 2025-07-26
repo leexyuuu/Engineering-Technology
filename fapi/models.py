@@ -218,7 +218,7 @@ class StudentAnswer(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     student_exam_id = Column(String, ForeignKey("student_exams.id"), nullable=False)
     answer_text = Column(Text)  # 用于填空题
-    question_id=Column(String, ForeignKey("question.id"), nullable=False)
+    question_id=Column(String, ForeignKey("questions.id"), nullable=False)
     file_url = Column(String(255))  # 文件题的文件URL
     option_answers = Column(Text().with_variant(Text(4294967295), 'mysql')) 
     

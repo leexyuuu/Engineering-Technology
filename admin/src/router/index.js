@@ -135,9 +135,8 @@ export const asyncRoutes = [
     path: '/exam',
     component: Layout,
     redirect: '/exam/examlist',
-    alwaysShow: true, // will always show the root menu
-    name: '考试管理',
-    meta: { title: '考试管理', icon: 'el-icon-document' },
+    name: '考试',
+    meta: { title: '考试', icon: 'el-icon-document' },
     children: [
       {
         path: 'examlist',
@@ -171,6 +170,29 @@ export const asyncRoutes = [
         component: () => import('@/views/exam/editquestion'),
         name: '编辑题目',
         meta: { title: '编辑题目', noCache: true, activeMenu: '/exam/examlist' },
+        hidden: true
+      }
+    ]
+  },
+
+  {
+    path: '/student',
+    component: Layout,
+    redirect: '/student/studentlist',
+    name: '学生',
+    meta: { title: '学生', icon: 'el-icon-user' },
+    children: [
+      {
+        path: 'studentlist',
+        component: () => import('@/views/student/studentlist'),
+        name: '学生列表',
+        meta: { title: '学生管理', icon: 'list' }
+      },
+      {
+        path: 'editstudent/:id?',
+        component: () => import('@/views/student/editstudent'),
+        name: '编辑学生',
+        meta: { title: '编辑学生', noCache: true, activeMenu: '/student/studentlist' },
         hidden: true
       }
     ]

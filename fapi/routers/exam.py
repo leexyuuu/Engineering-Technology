@@ -319,7 +319,7 @@ def read_exams(page: int = 1, page_size: int = 20, db: Session = Depends(get_db)
 def read_exam(exam_id: str, db: Session = Depends(get_db)):
     exam = db.query(Exam).filter(Exam.id == exam_id).first()
     if exam is None:
-        raise HTTPException(status_code=404, detail="Exam not found")
+        raise HTTPException(status_code=404, detail="没有找到这个考试")
     return {"code":20000,"data":exam}
 
 
@@ -328,7 +328,7 @@ def update_exam(exam_id: str, exam: ExamCreate=Depends(),token: str = Header(...
     checkToken(token)
     db_exam = db.query(Exam).filter(Exam.id == exam_id).first()
     if db_exam is None:
-        raise HTTPException(status_code=404, detail="Exam not found")
+        return {"code":404,"message":"没有找到这个考试"}
     for key, value in exam.dict(exclude_unset=True).items():
         setattr(db_exam, key, value)
     
@@ -336,12 +336,12 @@ def update_exam(exam_id: str, exam: ExamCreate=Depends(),token: str = Header(...
     db.refresh(db_exam)
     return {"code":20000,"data":db_exam}
 
-@app.post("/exam/students/create")
+@app.post("/students/create")
 def create_student(student: StudentCreate = Depends(), token: str = Header(..., alias="Authorization"),db: Session = Depends(get_db)):
     checkToken(token)
     db_student = db.query(Student).filter(Student.phone == student.phone).first()
     if db_student:
-        raise HTTPException(status_code=400, detail="Phone already registered")
+        return {"code":404,"message":"此电话已经注册过了，不能重复提交"}
     hashed_password = get_password_hash(student.password)
     db_student = Student(
         name=student.name,
@@ -355,23 +355,49 @@ def create_student(student: StudentCreate = Depends(), token: str = Header(..., 
     db.add(db_student)
     db.commit()
     db.refresh(db_student)
-    return db_student
+    return {"code":20000,"data":db_student}
 
-@app.put("/exam/students/{id}")
+@app.put("/students/{id}")
 def update_student(id:str,student: StudentCreate = Depends(), token: str = Header(..., alias="Authorization"),db: Session = Depends(get_db)):
     checkToken(token)
     db_student = db.query(Student).filter(Student.id ==id).first()
     if db_student is None:
-        raise HTTPException(status_code=404, detail="Student not found")
-    for key, value in student.dict(exclude_unset=True).items():
+        return {"code":404,"message":"没有找到这个学生"}
+    update_data = student.dict(exclude_unset=True, exclude={"password"})
+    if student.password and len(student.password)>0 and student.password!=db_student.password:
+            print("Password has changed")
+            h_password = get_password_hash(student.password)
+            setattr(db_student, "password",  h_password)
+       
+    for key, value in update_data.items():
         setattr(db_student, key, value)
-    
     db.commit()
     db.refresh(db_student)
     return {"code":20000,"data":db_student}
 
-@app.get("/exam/students/list")
-def read_exams(page: int = 1, page_size: int = 20, db: Session = Depends(get_db)):
+@app.get("/students/{id}")
+def read_student(id: str, token: str = Header(..., alias="Authorization"),db: Session = Depends(get_db)):
+    checkToken(token)
+    student = db.query(Student).filter(Student.id == id).first()
+    if student is None:
+        return {"code":404,"message":"没有找到这个学生"}
+    return {"code":20000,"data":student}
+
+@app.delete("/students/{id}")
+def delete_question(id: str,token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
+    checkToken(token)
+    db_area = db.query(Student).filter(Student.id == id).first()
+    if db_area is None:
+           return {"code":20000}
+    
+    db.delete(db_area)
+    db.commit()
+    return {"code":20000,"data":db_area}
+
+
+@app.get("/studentslist")
+def read_students(page: int = 1, page_size: int = 50,token: str = Header(..., alias="Authorization"), db: Session = Depends(get_db)):
+    checkToken(token)
     total = db.query(Student).count()
     students = db.query(Student).offset(page_size*(page-1)).limit(page_size).all()
     return {"code":20000,"data":{"total":total,"items":students}}

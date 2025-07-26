@@ -17,7 +17,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 # 配置
 SECRET_KEY = "mysaasfad435435dggfyf4556dsfecretkey"  # 你的密钥
 ALGORITHM = "HS256"          # 加密算法
-ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 访问令牌过期时间
+ACCESS_TOKEN_EXPIRE_MINUTES = 6000  # 访问令牌过期时间
  
 class LoginFrom(BaseModel):
     username: str
