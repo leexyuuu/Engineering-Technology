@@ -293,25 +293,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/students/")
-def create_student(student: StudentCreate, db: Session = Depends(get_db)):
-    db_student = db.query(Student).filter(Student.phone == student.phone).first()
-    if db_student:
-        raise HTTPException(status_code=400, detail="Phone already registered")
-    hashed_password = get_password_hash(student.password)
-    db_student = Student(
-        name=student.name,
-        phone=student.phone,
-        password=hashed_password,
-        avatar=student.avatar,
-        gender=student.gender,
-        id_number=student.id_number,
-        exam_number=student.exam_number
-    )
-    db.add(db_student)
-    db.commit()
-    db.refresh(db_student)
-    return db_student
 
 @app.get("/students/me")
 async def read_students_me(current_student: Student = Depends(get_current_student)):
@@ -354,6 +335,46 @@ def update_exam(exam_id: str, exam: ExamCreate=Depends(),token: str = Header(...
     db.commit()
     db.refresh(db_exam)
     return {"code":20000,"data":db_exam}
+
+@app.post("/exam/students/create")
+def create_student(student: StudentCreate = Depends(), token: str = Header(..., alias="Authorization"),db: Session = Depends(get_db)):
+    checkToken(token)
+    db_student = db.query(Student).filter(Student.phone == student.phone).first()
+    if db_student:
+        raise HTTPException(status_code=400, detail="Phone already registered")
+    hashed_password = get_password_hash(student.password)
+    db_student = Student(
+        name=student.name,
+        phone=student.phone,
+        password=hashed_password,
+        avatar=student.avatar,
+        gender=student.gender,
+        id_number=student.id_number,
+        exam_number=student.exam_number
+    )
+    db.add(db_student)
+    db.commit()
+    db.refresh(db_student)
+    return db_student
+
+@app.put("/exam/students/{id}")
+def update_student(id:str,student: StudentCreate = Depends(), token: str = Header(..., alias="Authorization"),db: Session = Depends(get_db)):
+    checkToken(token)
+    db_student = db.query(Student).filter(Student.id ==id).first()
+    if db_student is None:
+        raise HTTPException(status_code=404, detail="Student not found")
+    for key, value in student.dict(exclude_unset=True).items():
+        setattr(db_student, key, value)
+    
+    db.commit()
+    db.refresh(db_student)
+    return {"code":20000,"data":db_student}
+
+@app.get("/exam/students/list")
+def read_exams(page: int = 1, page_size: int = 20, db: Session = Depends(get_db)):
+    total = db.query(Student).count()
+    students = db.query(Student).offset(page_size*(page-1)).limit(page_size).all()
+    return {"code":20000,"data":{"total":total,"items":students}}
 
 
 
