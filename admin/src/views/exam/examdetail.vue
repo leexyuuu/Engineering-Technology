@@ -51,7 +51,7 @@
         >
           <!-- 题目标题 -->
           <div class="question-title">
-            <span class="question-number">第{{ question.order }}题</span>
+            <span class="question-number">第{{ (index+1) }}题</span>
             <div class="question-tags">
               <el-tag size="small" type="primary">{{ getQuestionType(question) }}</el-tag>
               <el-tag v-if="question.requires_file" size="small" type="warning">需要上传文件</el-tag>
@@ -79,7 +79,7 @@
                 class="sub-question-block"
               >
                 <div class="sub-question-title">
-                  <span class="sub-number">{{ subQuestion.order }}.</span>
+                  <span class="sub-number">{{ subIndex+1}}.</span>
                   <span class="sub-content">{{ subQuestion.content }}</span>
                   <span class="sub-score">({{ subQuestion.score }}分)</span>
                   <el-tag size="mini" type="success">{{ getSubQuestionType(subQuestion.question_type) }}</el-tag>
@@ -90,52 +90,63 @@
                   <h5>选项：</h5>
                   <div class="options-list">
                     <div 
-                      v-for="option in subQuestion.options" 
+                      v-for="(option, optionIndex) in subQuestion.options" 
                       :key="option.uuid"
-                      class="option-item"
+                      :class="['option-item', { 'selected': isOptionSelected(question, subIndex, optionIndex), 'correct': option.is_correct }]"
                     >
                       <span class="option-text">{{ option.content }}</span>
-                      <el-tag v-if="option.is_correct" type="success" size="mini">正确答案</el-tag>
+                      <div class="option-status">
+                        <el-tag v-if="option.is_correct" type="success" size="mini">正确答案</el-tag>
+                        <el-tag v-if="isOptionSelected(question, subIndex, optionIndex)" type="info" size="mini">学生选择</el-tag>
+                        <el-tag v-if="isOptionSelected(question, subIndex, optionIndex) && option.is_correct" type="success" size="mini">✓ 正确</el-tag>
+                        <el-tag v-if="isOptionSelected(question, subIndex, optionIndex) && !option.is_correct" type="danger" size="mini">✗ 错误</el-tag>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <!-- 学生答案区域 -->
-            <div class="student-answer-section">
-              <h4>学生答案：</h4>
-              <div v-if="getStudentAnswer(question)" class="answer-content">
-                <!-- 选择题答案 -->
-                <div v-if="getStudentAnswer(question).option_answers" class="choice-answer">
-                  <div 
-                    v-for="answer in parseOptionAnswers(getStudentAnswer(question).option_answers)" 
-                    :key="answer"
-                    class="answer-tag"
-                  >
-                    <el-tag type="info" size="medium">{{ answer }}</el-tag>
+                <!-- 填空题答案 -->
+                <div v-else-if="subQuestion.question_type === 'text'" class="text-answer-section">
+                  <h5>学生答案：</h5>
+                  <div v-if="getSubQuestionAnswer(question, subIndex)" class="text-answer">
+                    <div class="answer-text">{{ getSubQuestionAnswer(question, subIndex) }}</div>
+                  </div>
+                  <div v-else class="no-answer">
+                    <el-tag type="info" size="medium">未作答</el-tag>
                   </div>
                 </div>
-                <!-- 填空题答案 -->
-                <div v-else-if="getStudentAnswer(question).answer_text" class="text-answer">
-                  <div class="answer-text">{{ getStudentAnswer(question).answer_text }}</div>
-                </div>
-                <div v-else class="no-answer">
-                  <el-tag type="info" size="medium">未作答</el-tag>
-                </div>
-              </div>
-              <div v-else class="no-answer">
-                <el-tag type="info" size="medium">未作答</el-tag>
               </div>
             </div>
 
             <!-- 文件题答案 -->
             <div v-if="question.requires_file" class="file-answer-section">
               <h4>学生上传的文件：</h4>
-              <div v-if="getStudentAnswer(question) && getStudentAnswer(question).file_url" class="file-link">
-                <a :href="getStudentAnswer(question).file_url" target="_blank">
-                  <el-button type="primary" icon="el-icon-download">查看文件</el-button>
-                </a>
+              <div v-if="getStudentAnswer(question) && getStudentAnswer(question).file_url" class="file-display">
+                <div v-if="isImageFile(getStudentAnswer(question).file_url)" class="image-file">
+                  <div class="image-container">
+                    <img 
+                      :src="getStudentAnswer(question).file_url" 
+                      @click="previewImage(getStudentAnswer(question).file_url)"
+                      class="preview-image"
+                      alt="学生上传的图片"
+                    />
+                    <div class="image-overlay">
+                      <el-button type="primary" size="small" icon="el-icon-zoom-in" @click="previewImage(getStudentAnswer(question).file_url)">预览</el-button>
+                    </div>
+                  </div>
+                  <div class="file-actions">
+                    <el-button type="success" size="small" icon="el-icon-download" @click="downloadFile(getStudentAnswer(question).file_url)">下载</el-button>
+                  </div>
+                </div>
+                <div v-else class="other-file">
+                  <div class="file-info">
+                    <i class="el-icon-document"></i>
+                    <span class="file-name">{{ getFileName(getStudentAnswer(question).file_url) }}</span>
+                  </div>
+                  <div class="file-actions">
+                    <el-button type="primary" size="small" icon="el-icon-download" @click="downloadFile(getStudentAnswer(question).file_url)">下载</el-button>
+                  </div>
+                </div>
               </div>
               <div v-else class="no-file">
                 <el-tag type="info" size="medium">未上传文件</el-tag>
@@ -214,6 +225,67 @@ export default {
     },
     getStudentAnswer(question) {
       return question.student_answer || null
+    },
+    // 检查选项是否被选中
+    isOptionSelected(question, subIndex, optionIndex) {
+      const studentAnswer = this.getStudentAnswer(question)
+      if (!studentAnswer || !studentAnswer.option_answers) return false
+      
+      try {
+        const answers = JSON.parse(studentAnswer.option_answers)
+        if (Array.isArray(answers)) {
+          return answers.includes(optionIndex)
+        } else {
+          return answers === optionIndex
+        }
+      } catch (e) {
+        return false
+      }
+    },
+    // 获取子问题的答案
+    getSubQuestionAnswer(question, subIndex) {
+      const studentAnswer = this.getStudentAnswer(question)
+      if (!studentAnswer || !studentAnswer.option_answers) return null
+      
+      try {
+        const answers = JSON.parse(studentAnswer.option_answers)
+        if (typeof answers === 'string') {
+          return answers
+        }
+        return null
+      } catch (e) {
+        return null
+      }
+    },
+    // 检查是否为图片文件
+    isImageFile(fileUrl) {
+      if (!fileUrl) return false
+      const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+      const lowerUrl = fileUrl.toLowerCase()
+      return imageExtensions.some(ext => lowerUrl.includes(ext))
+    },
+    // 获取文件名
+    getFileName(fileUrl) {
+      if (!fileUrl) return ''
+      const parts = fileUrl.split('/')
+      return parts[parts.length - 1] || '未知文件'
+    },
+    // 预览图片
+    previewImage(imageUrl) {
+      this.$alert(`<img src="${imageUrl}" style="max-width: 100%; height: auto;" />`, '图片预览', {
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: '关闭',
+        customClass: 'image-preview-dialog'
+      })
+    },
+    // 下载文件
+    downloadFile(fileUrl) {
+      const link = document.createElement('a')
+      link.href = fileUrl
+      link.download = this.getFileName(fileUrl)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
     },
     getQuestionType(question) {
       if (question.requires_file) return '文件题'
@@ -496,6 +568,26 @@ export default {
   background: white;
   border-radius: 6px;
   border: 1px solid #e4e7ed;
+  transition: all 0.3s ease;
+}
+
+.option-item.selected {
+  background: #e6f7ff;
+  border-color: #91d5ff;
+}
+
+.option-item.correct {
+  border-color: #52c41a;
+}
+
+.option-item.selected.correct {
+  background: #f6ffed;
+  border-color: #52c41a;
+}
+
+.option-item.selected:not(.correct) {
+  background: #fff2f0;
+  border-color: #ff4d4f;
 }
 
 .option-text {
@@ -504,44 +596,22 @@ export default {
   line-height: 1.4;
 }
 
-/* 学生答案样式 */
-.student-answer-section {
-  margin: 25px 0;
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e4e7ed;
-}
-
-.student-answer-section h4 {
-  color: #303133;
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 15px 0;
+.option-status {
   display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.student-answer-section h4::before {
-  content: "📝";
-  font-size: 18px;
-}
-
-.answer-content {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.choice-answer {
-  display: flex;
+  gap: 4px;
   flex-wrap: wrap;
-  gap: 8px;
 }
 
-.answer-tag {
-  display: inline-block;
+/* 填空题答案样式 */
+.text-answer-section {
+  margin-top: 15px;
+}
+
+.text-answer-section h5 {
+  color: #606266;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 10px 0;
 }
 
 .text-answer {
@@ -549,6 +619,7 @@ export default {
   border: 1px solid #dcdfe6;
   border-radius: 6px;
   padding: 15px;
+  margin-top: 8px;
 }
 
 .answer-text {
@@ -562,6 +633,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: 8px;
 }
 
 /* 文件答案样式 */
@@ -588,8 +660,87 @@ export default {
   font-size: 18px;
 }
 
-.file-link {
+.file-display {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.image-file {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.image-container {
+  position: relative;
   display: inline-block;
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.preview-image {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  transition: transform 0.3s ease;
+}
+
+.preview-image:hover {
+  transform: scale(1.05);
+}
+
+.image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.image-container:hover .image-overlay {
+  opacity: 1;
+}
+
+.file-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.other-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-info i {
+  font-size: 20px;
+  color: #409eff;
+}
+
+.file-name {
+  color: #303133;
+  font-weight: 500;
 }
 
 .no-file {
@@ -659,5 +810,17 @@ export default {
 .el-button {
   border-radius: 8px;
   font-weight: 500;
+}
+
+/* 图片预览对话框样式 */
+:deep(.image-preview-dialog) {
+  .el-message-box__content {
+    text-align: center;
+    padding: 20px;
+  }
+  
+  .el-message-box__message {
+    margin: 0;
+  }
 }
 </style> 
