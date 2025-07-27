@@ -187,11 +187,11 @@ async def readMe(token: str = Header(..., alias="Authorization")):
         )
     return {"code": 20000, "data": {"items":list}}
 
-@app.get("/admin/logout", response_model=AdminUser)
-async def logout(token: str = Depends(oauth2_scheme)):
+@app.post("/admin/logout")
+async def logout(token: str = Header(..., alias="Authorization")):
     user = checkToken(token)
     access_token = create_access_token(data={"sub": user.name},expires_delta=timedelta(minutes=0))
-    return {"token": access_token, "token_type": "bearer"}
+    return {"code": 20000,"access_token":access_token}
 
 @app.post("/admin/addmockuser")
 def addMockUser(user:UserMockCreate= Depends(), token: str = Header(..., alias="Authorization"),db: Session = Depends(get_db)):
