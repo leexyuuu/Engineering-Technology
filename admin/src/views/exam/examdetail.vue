@@ -1,111 +1,154 @@
 <template>
-  <div class="app-container">
-    <div class="header-info">
-      <h2>考试详情</h2>
-      <div class="student-info">
-        <p><strong>学生姓名：</strong>{{ studentInfo.name }}</p>
-        <p><strong>手机号：</strong>{{ studentInfo.phone }}</p>
-        <p><strong>准考证号：</strong>{{ studentInfo.exam_number }}</p>
-        <p><strong>考试状态：</strong>
-          <el-tag :type="getStatusType(studentInfo.status)">
-            {{ getStatusText(studentInfo.status) }}
-          </el-tag>
-        </p>
-        <p><strong>开始时间：</strong>{{ formatDateTime(studentInfo.start_time) }}</p>
-        <p><strong>结束时间：</strong>{{ formatDateTime(studentInfo.end_time) }}</p>
+  <div class="exam-detail-container">
+    <!-- 页面头部信息 -->
+    <div class="exam-header">
+      <div class="header-content">
+        <div class="header-left">
+          <h1 class="exam-title">考试详情</h1>
+          <div class="student-basic-info">
+            <div class="info-item">
+              <span class="label">学生姓名：</span>
+              <span class="value">{{ studentInfo.name }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">手机号：</span>
+              <span class="value">{{ studentInfo.phone }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">准考证号：</span>
+              <span class="value">{{ studentInfo.exam_number }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">考试状态：</span>
+              <el-tag :type="getStatusType(studentInfo.status)" size="medium">
+                {{ getStatusText(studentInfo.status) }}
+              </el-tag>
+            </div>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="exam-time-info">
+            <div class="time-item">
+              <span class="label">开始时间：</span>
+              <span class="value">{{ formatDateTime(studentInfo.start_time) }}</span>
+            </div>
+            <div class="time-item">
+              <span class="label">结束时间：</span>
+              <span class="value">{{ formatDateTime(studentInfo.end_time) }}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="questions-container" v-loading="loading">
-      <div 
-        v-for="(question, index) in examResults" 
-        :key="question.id"
-        class="question-item"
-      >
-        <div class="question-header">
-          <h3>第{{ question.order }}题</h3>
-          <div class="question-meta">
-            <span class="question-type">{{ getQuestionType(question) }}</span>
-            <span v-if="question.requires_file" class="file-required">需要上传文件</span>
-          </div>
-        </div>
-
-        <div class="question-content">
-          <p><strong>题目描述：</strong>{{ question.content }}</p>
-          
-          <!-- 文件说明 -->
-          <div v-if="question.requires_file && question.file_description" class="file-description">
-            <p><strong>文件说明：</strong>{{ question.file_description }}</p>
+    <!-- 考试内容区域 -->
+    <div class="exam-content" v-loading="loading">
+      <div class="questions-section">
+        <div 
+          v-for="(question, index) in examResults" 
+          :key="question.id"
+          class="question-block"
+        >
+          <!-- 题目标题 -->
+          <div class="question-title">
+            <span class="question-number">第{{ question.order }}题</span>
+            <div class="question-tags">
+              <el-tag size="small" type="primary">{{ getQuestionType(question) }}</el-tag>
+              <el-tag v-if="question.requires_file" size="small" type="warning">需要上传文件</el-tag>
+            </div>
           </div>
 
-          <!-- 子问题列表 -->
-          <div v-if="question.sub_questions_str" class="sub-questions">
-            <div 
-              v-for="(subQuestion, subIndex) in parseSubQuestions(question.sub_questions_str)" 
-              :key="subQuestion.uuid"
-              class="sub-question"
-            >
-              <div class="sub-question-header">
-                <span class="sub-order">{{ subQuestion.order }}.</span>
-                <span class="sub-content">{{ subQuestion.content }}</span>
-                <span class="sub-score">({{ subQuestion.score }}分)</span>
-                <span class="sub-type">{{ getSubQuestionType(subQuestion.question_type) }}</span>
-              </div>
+          <!-- 题目内容 -->
+          <div class="question-body">
+            <div class="question-description">
+              <h4>题目描述：</h4>
+              <p>{{ question.content }}</p>
+            </div>
+            
+            <!-- 文件说明 -->
+            <div v-if="question.requires_file && question.file_description" class="file-instruction">
+              <h4>文件说明：</h4>
+              <p>{{ question.file_description }}</p>
+            </div>
 
-              <!-- 选项（如果是选择题） -->
-              <div v-if="subQuestion.question_type === 'single_choice' || subQuestion.question_type === 'multiple_choice'" class="options">
-                <div 
-                  v-for="option in subQuestion.options" 
-                  :key="option.uuid"
-                  class="option"
-                >
-                  <span class="option-content">{{ option.content }}</span>
-                  <el-tag v-if="option.is_correct" type="success" size="mini">正确答案</el-tag>
+            <!-- 子问题列表 -->
+            <div v-if="question.sub_questions_str" class="sub-questions-section">
+              <div 
+                v-for="(subQuestion, subIndex) in parseSubQuestions(question.sub_questions_str)" 
+                :key="subQuestion.uuid"
+                class="sub-question-block"
+              >
+                <div class="sub-question-title">
+                  <span class="sub-number">{{ subQuestion.order }}.</span>
+                  <span class="sub-content">{{ subQuestion.content }}</span>
+                  <span class="sub-score">({{ subQuestion.score }}分)</span>
+                  <el-tag size="mini" type="success">{{ getSubQuestionType(subQuestion.question_type) }}</el-tag>
+                </div>
+
+                <!-- 选项（如果是选择题） -->
+                <div v-if="subQuestion.question_type === 'single_choice' || subQuestion.question_type === 'multiple_choice'" class="options-section">
+                  <h5>选项：</h5>
+                  <div class="options-list">
+                    <div 
+                      v-for="option in subQuestion.options" 
+                      :key="option.uuid"
+                      class="option-item"
+                    >
+                      <span class="option-text">{{ option.content }}</span>
+                      <el-tag v-if="option.is_correct" type="success" size="mini">正确答案</el-tag>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- 学生答案（针对整个题目） -->
-          <div v-if="getStudentAnswer(question)" class="student-answer">
-            <p><strong>学生答案：</strong></p>
-            <!-- 选择题答案 -->
-            <div v-if="getStudentAnswer(question).option_answers">
-              <div 
-                v-for="answer in parseOptionAnswers(getStudentAnswer(question).option_answers)" 
-                :key="answer"
-                class="answer-item"
-              >
-                <el-tag type="info">{{ answer }}</el-tag>
+            <!-- 学生答案区域 -->
+            <div class="student-answer-section">
+              <h4>学生答案：</h4>
+              <div v-if="getStudentAnswer(question)" class="answer-content">
+                <!-- 选择题答案 -->
+                <div v-if="getStudentAnswer(question).option_answers" class="choice-answer">
+                  <div 
+                    v-for="answer in parseOptionAnswers(getStudentAnswer(question).option_answers)" 
+                    :key="answer"
+                    class="answer-tag"
+                  >
+                    <el-tag type="info" size="medium">{{ answer }}</el-tag>
+                  </div>
+                </div>
+                <!-- 填空题答案 -->
+                <div v-else-if="getStudentAnswer(question).answer_text" class="text-answer">
+                  <div class="answer-text">{{ getStudentAnswer(question).answer_text }}</div>
+                </div>
+                <div v-else class="no-answer">
+                  <el-tag type="info" size="medium">未作答</el-tag>
+                </div>
+              </div>
+              <div v-else class="no-answer">
+                <el-tag type="info" size="medium">未作答</el-tag>
               </div>
             </div>
-            <!-- 填空题答案 -->
-            <div v-else-if="getStudentAnswer(question).answer_text">
-              <p class="text-answer">{{ getStudentAnswer(question).answer_text }}</p>
-            </div>
-            <div v-else class="no-answer">未作答</div>
-          </div>
-          <div v-else class="student-answer">
-            <p><strong>学生答案：</strong></p>
-            <div class="no-answer">未作答</div>
-          </div>
 
-          <!-- 文件题答案 -->
-          <div v-if="question.requires_file" class="file-answer">
-            <p><strong>学生上传的文件：</strong></p>
-            <div v-if="getStudentAnswer(question) && getStudentAnswer(question).file_url">
-              <a :href="getStudentAnswer(question).file_url" target="_blank" class="file-link">
-                <el-button type="primary" size="small">查看文件</el-button>
-              </a>
+            <!-- 文件题答案 -->
+            <div v-if="question.requires_file" class="file-answer-section">
+              <h4>学生上传的文件：</h4>
+              <div v-if="getStudentAnswer(question) && getStudentAnswer(question).file_url" class="file-link">
+                <a :href="getStudentAnswer(question).file_url" target="_blank">
+                  <el-button type="primary" icon="el-icon-download">查看文件</el-button>
+                </a>
+              </div>
+              <div v-else class="no-file">
+                <el-tag type="info" size="medium">未上传文件</el-tag>
+              </div>
             </div>
-            <div v-else class="no-answer">未上传文件</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="actions">
-      <el-button @click="$router.back()">返回</el-button>
+    <!-- 页面底部操作 -->
+    <div class="exam-footer">
+      <el-button @click="$router.back()" icon="el-icon-back">返回</el-button>
     </div>
   </div>
 </template>
@@ -217,175 +260,404 @@ export default {
 </script>
 
 <style scoped>
-.header-info {
-  background: #f5f7fa;
+.exam-detail-container {
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.student-info {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.student-info p {
-  margin: 5px 0;
-}
-
-.questions-container {
-  margin-bottom: 20px;
-}
-
-.question-item {
-  border: 1px solid #e4e7ed;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  overflow: hidden;
-}
-
-.question-header {
   background: #f5f7fa;
-  padding: 15px 20px;
-  border-bottom: 1px solid #e4e7ed;
+  min-height: 100vh;
+}
+
+/* 页面头部样式 */
+.exam-header {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.header-left {
+  flex: 1;
+}
+
+.exam-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0 0 20px 0;
+  border-bottom: 3px solid #409eff;
+  padding-bottom: 10px;
+}
+
+.student-basic-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-item .label {
+  font-weight: 600;
+  color: #606266;
+  min-width: 80px;
+}
+
+.info-item .value {
+  color: #303133;
+  font-weight: 500;
+}
+
+.header-right {
+  text-align: right;
+}
+
+.exam-time-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.time-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.time-item .label {
+  font-size: 12px;
+  color: #909399;
+}
+
+.time-item .value {
+  font-weight: 500;
+  color: #303133;
+}
+
+/* 考试内容区域样式 */
+.exam-content {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.questions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.question-block {
+  border: 2px solid #e4e7ed;
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.question-block:hover {
+  border-color: #409eff;
+  box-shadow: 0 4px 20px rgba(64, 158, 255, 0.15);
+}
+
+.question-title {
+  background: linear-gradient(135deg, #409eff 0%, #36a3f7 100%);
+  color: white;
+  padding: 20px 25px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.question-header h3 {
-  margin: 0;
-  color: #303133;
+.question-number {
+  font-size: 20px;
+  font-weight: 600;
 }
 
-.question-meta {
+.question-tags {
   display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.question-type {
-  background: #409eff;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.file-required {
-  background: #f56c6c;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.question-content {
-  padding: 20px;
-}
-
-.file-description {
-  background: #f0f9ff;
-  padding: 10px;
-  border-radius: 4px;
-  margin: 10px 0;
-  border-left: 4px solid #409eff;
-}
-
-.sub-questions {
-  margin-top: 15px;
-}
-
-.sub-question {
-  border: 1px solid #dcdfe6;
-  border-radius: 6px;
-  padding: 15px;
-  margin-bottom: 15px;
-  background: #fafafa;
-}
-
-.sub-question-header {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
-  font-weight: 500;
 }
 
-.sub-order {
+.question-body {
+  padding: 25px;
+}
+
+.question-description h4 {
+  color: #303133;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 10px 0;
+}
+
+.question-description p {
+  color: #606266;
+  line-height: 1.6;
+  margin: 0;
+  font-size: 15px;
+}
+
+.file-instruction {
+  background: #f0f9ff;
+  border-left: 4px solid #409eff;
+  padding: 15px;
+  margin: 20px 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.file-instruction h4 {
   color: #409eff;
-  font-weight: bold;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.file-instruction p {
+  color: #606266;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* 子问题样式 */
+.sub-questions-section {
+  margin: 25px 0;
+}
+
+.sub-question-block {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  background: #fafbfc;
+}
+
+.sub-question-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.sub-number {
+  color: #409eff;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.sub-content {
+  flex: 1;
+  color: #303133;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 .sub-score {
   color: #f56c6c;
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 14px;
 }
 
-.sub-type {
-  background: #67c23a;
-  color: white;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 11px;
+.options-section {
+  margin-top: 15px;
 }
 
-.options {
-  margin: 10px 0;
+.options-section h5 {
+  color: #606266;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 10px 0;
 }
 
-.option {
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 5px 0;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e4e7ed;
 }
 
-.option-content {
+.option-text {
   flex: 1;
+  color: #303133;
+  line-height: 1.4;
 }
 
-.student-answer {
-  margin-top: 15px;
-  padding: 10px;
-  background: #f0f9ff;
-  border-radius: 4px;
-  border-left: 4px solid #409eff;
+/* 学生答案样式 */
+.student-answer-section {
+  margin: 25px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
 }
 
-.answer-item {
-  margin: 5px 0;
+.student-answer-section h4 {
+  color: #303133;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.student-answer-section h4::before {
+  content: "📝";
+  font-size: 18px;
+}
+
+.answer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choice-answer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.answer-tag {
+  display: inline-block;
 }
 
 .text-answer {
   background: white;
-  padding: 8px;
-  border-radius: 4px;
   border: 1px solid #dcdfe6;
-  margin: 5px 0;
+  border-radius: 6px;
+  padding: 15px;
+}
+
+.answer-text {
+  color: #303133;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .no-answer {
-  color: #909399;
-  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.file-answer {
-  margin-top: 15px;
-  padding: 10px;
+/* 文件答案样式 */
+.file-answer-section {
+  margin: 25px 0;
+  padding: 20px;
   background: #f0f9ff;
-  border-radius: 4px;
-  border-left: 4px solid #409eff;
+  border-radius: 8px;
+  border: 1px solid #b3d8ff;
+}
+
+.file-answer-section h4 {
+  color: #409eff;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-answer-section h4::before {
+  content: "📎";
+  font-size: 18px;
 }
 
 .file-link {
-  text-decoration: none;
+  display: inline-block;
 }
 
-.actions {
+.no-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 页面底部样式 */
+.exam-footer {
   text-align: center;
-  margin-top: 20px;
+  margin-top: 30px;
+  padding: 20px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .exam-detail-container {
+    padding: 10px;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .header-right {
+    text-align: left;
+  }
+  
+  .time-item {
+    align-items: flex-start;
+  }
+  
+  .student-basic-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .question-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .question-tags {
+    align-self: flex-end;
+  }
+  
+  .sub-question-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+/* 加载状态样式 */
+.el-loading-mask {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* 标签样式优化 */
+.el-tag {
+  border-radius: 6px;
+}
+
+/* 按钮样式优化 */
+.el-button {
+  border-radius: 8px;
+  font-weight: 500;
 }
 </style> 
