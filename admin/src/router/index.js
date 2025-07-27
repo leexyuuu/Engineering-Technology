@@ -171,6 +171,13 @@ export const asyncRoutes = [
         name: '编辑题目',
         meta: { title: '编辑题目', noCache: true, activeMenu: '/exam/examlist' },
         hidden: true
+      },
+      {
+        path: 'examdetail/:exam_id/:student_id',
+        component: () => import('@/views/exam/examdetail'),
+        name: '考试详情',
+        meta: { title: '考试详情', noCache: true, activeMenu: '/exam/examlist' },
+        hidden: true
       }
     ]
   },

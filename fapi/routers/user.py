@@ -12,41 +12,6 @@ from datetime import datetime, timedelta
 from admin import checkToken
 
 
-# 获取所有用户
-@app.get("/users/")
-def read_users(page: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    query = db.query(UserModel,AreaModel.name.label('area'),CellModel.name.label('cell')).outerjoin(AreaModel, UserModel.areaId == AreaModel.id).outerjoin(CellModel, UserModel.cellId == CellModel.id)
-    total=query.count()
-    res = query.order_by(desc(UserModel.id)).offset((page-1)*limit).limit(limit).all()
-    list=[]
-    for row in res:
-        item=row[0]
-        area=row[1]
-        cell=row[2]
-        item.area=area
-        item.cell=cell
-        list.append(item)
-   
-    return {"code":20000,"data":{"total":total,"items":list}}
-
-@app.get("/admin/mockusers/")
-def read_mockusers(page: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    query = db.query(UserModel,AreaModel.name.label('area'),CellModel.name.label('cell')).outerjoin(AreaModel, UserModel.areaId == AreaModel.id).outerjoin(CellModel, UserModel.cellId == CellModel.id)
-    query=query.filter(UserModel.type == 0)
-    total=query.count()
-    res = query.order_by(desc(UserModel.id)).offset((page-1)*limit).limit(limit).all()
-    list=[]
-    for row in res:
-        item=row[0]
-        area=row[1]
-        cell=row[2]
-        item.area=area
-        item.cell=cell
-        list.append(item)
-   
-    return {"code":20000,"data":{"total":total,"items":list}}
-
-
 @app.get("/user/me",)
 async def readMe(token: str = Header(..., alias="Authorization")):
     user = login.checkToken(token)

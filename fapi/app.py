@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from database import SessionLocal, engine, Base
 import admin
-import routers.content,routers.cell,routers.city,routers.area,routers.role,routers.user,routers.Message,routers.Comment,routers.Reply,routers.exam
+import routers.content,routers.cell,routers.city,routers.area,routers.role,routers.user,routers.Message,routers.Comment,routers.Reply,routers.exam,routers.student
 from base import app,get_db
 # 创建所有表
 Base.metadata.create_all(bind=engine)

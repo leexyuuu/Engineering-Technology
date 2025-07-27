@@ -4,14 +4,14 @@ from typing import Optional
 from database import Base
 from base import app,get_db
 from sqlalchemy.orm import Session
-from fastapi import FastAPI, Depends, HTTPException,Header
+from fastapi import FastAPI, Depends, HTTPException, Header, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy import Column, Text, Integer,String,Date,DateTime,VARCHAR, TIMESTAMP, BOOLEAN, Float, text
 import jwt
 import hashlib
 from schemas import User,UserCreate,UserMockCreate
-from models import UserModel,AreaModel,CellModel
+from models import UserModel,AreaModel,CellModel,Exam,Question,Student,StudentExam,StudentAnswer
 # OAuth2 的 Bearer Token 方案
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 # 配置
@@ -217,6 +217,7 @@ def addMockUser(user:UserMockCreate= Depends(), token: str = Header(..., alias="
     db.commit()
     db.refresh(new_user)
     return {"code":20000,"data":new_user}
+
 
 
 

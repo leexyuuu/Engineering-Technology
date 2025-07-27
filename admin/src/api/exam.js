@@ -140,3 +140,11 @@ export function deleteQuestionProblem(exam_id, question_id, problem_id) {
     method: 'delete'
   })
 } 
+
+// 获取学生考试详情
+export function fetchStudentExamResult(exam_id, student_id) {
+  return request({
+    url: `/api/student/exams/${exam_id}/result/${student_id}`,
+    method: 'get'
+  })
+} 

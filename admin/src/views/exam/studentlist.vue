@@ -1,14 +1,36 @@
 <template>
   <div class="app-container">
-    <el-button type="primary" @click="handleAdd">添加学生</el-button>
+    <h3>考试：{{ examName }}</h3>
     <el-table :data="studentList" style="width: 100%" v-loading="loading">
-      <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column prop="id" label="学生ID" width="80" />
       <el-table-column prop="name" label="学生姓名" />
-      <el-table-column prop="email" label="邮箱" />
+      <el-table-column prop="phone" label="手机号" />
+      <el-table-column prop="exam_number" label="准考证号" />
+      <el-table-column label="考试状态" width="100">
+        <template slot-scope="scope">
+          <el-tag :type="getStatusType(scope.row.status)">
+            {{ getStatusText(scope.row.status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="开始时间" width="160">
+        <template slot-scope="scope">
+          {{ formatDateTime(scope.row.start_time) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="结束时间" width="160">
+        <template slot-scope="scope">
+          {{ formatDateTime(scope.row.end_time) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="考试时长" width="100">
+        <template slot-scope="scope">
+          {{ scope.row.duration_minutes ? scope.row.duration_minutes + '分钟' : '-' }}
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="180">
         <template slot-scope="scope">
-          <el-button size="mini" @click="handleEdit(scope.row)">编辑</el-button>
-          <el-button size="mini" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+          <el-button size="mini" @click="handleViewDetail(scope.row)">查看详情</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -20,25 +42,11 @@
       :current-page.sync="page"
       @current-change="fetchList"
     />
-    <el-dialog :visible.sync="dialogVisible" title="编辑学生">
-      <el-form :model="form" :rules="rules" ref="form" label-width="100px">
-        <el-form-item label="学生姓名" prop="name">
-          <el-input v-model="form.name" />
-        </el-form-item>
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="form.email" />
-        </el-form-item>
-      </el-form>
-      <div slot="footer">
-        <el-button @click="dialogVisible=false">取消</el-button>
-        <el-button type="primary" @click="onSubmit">保存</el-button>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
 <script>
-import { fetchExamStudentList, createExamStudent, updateExamStudent, deleteExamStudent } from '@/api/exam'
+import { fetchExamStudentList, fetchExam } from '@/api/exam'
 export default {
   data() {
     return {
@@ -46,57 +54,63 @@ export default {
       loading: false,
       total: 0,
       page: 1,
-      pageSize: 10,
+      pageSize: 50,
       exam_id: null,
-      dialogVisible: false,
-      form: { name: '', email: '' },
-      rules: {
-        name: [{ required: true, message: '请输入学生姓名', trigger: 'blur' }],
-        email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }]
-      },
-      editId: null
+      examName: ''
     }
   },
   created() {
     this.exam_id = this.$route.params.exam_id
+    this.fetchExamName()
     this.fetchList()
   },
   methods: {
+    fetchExamName() {
+      fetchExam(this.exam_id).then(res => {
+        this.examName = res.name || (res.data && res.data.name) || ''
+      })
+    },
     fetchList() {
       this.loading = true
       fetchExamStudentList(this.exam_id, { page: this.page, page_size: this.pageSize }).then(res => {
-        this.studentList = res.items || res.data || []
-        this.total = res.total || 0
+        this.studentList = res.data.items || []
+        this.total = res.data.total || 0
         this.loading = false
       }).catch(() => { this.loading = false })
     },
-    handleAdd() {
-      this.form = { name: '', email: '' }
-      this.editId = null
-      this.dialogVisible = true
+    getStatusType(status) {
+      const statusMap = {
+        'not_started': 'info',
+        'in_progress': 'warning',
+        'submitted': 'success'
+      }
+      return statusMap[status] || 'info'
     },
-    handleEdit(row) {
-      this.form = { ...row }
-      this.editId = row.id
-      this.dialogVisible = true
+    getStatusText(status) {
+      const statusMap = {
+        'not_started': '未开始',
+        'in_progress': '进行中',
+        'submitted': '已提交'
+      }
+      return statusMap[status] || '未知'
     },
-    handleDelete(row) {
-      this.$confirm('确定删除该学生吗？', '提示', { type: 'warning' }).then(() => {
-        deleteExamStudent(this.exam_id, row.id).then(() => {
-          this.$message.success('删除成功')
-          this.fetchList()
-        })
-      })
+    formatDateTime(dateTime) {
+      if (!dateTime) return '-'
+      const date = new Date(dateTime)
+      return date.toLocaleString('zh-CN')
     },
-    onSubmit() {
-      this.$refs.form.validate(valid => {
-        if (!valid) return
-        const action = this.editId ? updateExamStudent(this.exam_id, this.editId, this.form) : createExamStudent(this.exam_id, this.form)
-        action.then(() => {
-          this.$message.success('保存成功')
-          this.dialogVisible = false
-          this.fetchList()
-        })
+    handleViewDetail(row) {
+      // 跳转到学生考试详情页面
+      this.$router.push({
+        path: `/exam/examdetail/${this.exam_id}/${row.id}`,
+        query: {
+          studentName: row.name,
+          studentPhone: row.phone,
+          examNumber: row.exam_number,
+          status: row.status,
+          startTime: row.start_time,
+          endTime: row.end_time
+        }
       })
     }
   }
