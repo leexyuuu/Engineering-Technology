@@ -17,11 +17,11 @@
         <h2 class="login-title">登录</h2>
         
         <div class="form-group">
-          <label class="form-label">用户名</label>
+          <label class="form-label">手机号码</label>
           <input 
-            type="text" 
+            type="tel" 
             v-model="username" 
-            placeholder="请输入用户名"
+            placeholder="请输入手机号码"
             class="form-input"
           />
         </div>
@@ -55,10 +55,23 @@
         <button 
           @click="handleLogin" 
           class="login-button"
-          :disabled="!username || !password"
+          :disabled="!username || !password || loading"
         >
-          登录
+          {{ loading ? '登录中...' : '登录' }}
         </button>
+
+        <!-- 错误信息显示 -->
+        <div v-if="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
+
+        <!-- 注册入口 -->
+        <div class="register-section">
+          <span class="register-text">还没有账号？</span>
+          <button @click="goToRegister" class="register-link">
+            立即注册
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -72,26 +85,59 @@ const router = useRouter()
 const username = ref('')
 const password = ref('')
 const showPassword = ref(false)
+const loading = ref(false)
+const errorMessage = ref('')
 
 const togglePassword = () => {
   showPassword.value = !showPassword.value
 }
 
-const handleLogin = () => {
+const goToRegister = () => {
+  router.push('/register')
+}
+
+const handleLogin = async () => {
   if (!username.value || !password.value) {
-    alert('请输入用户名和密码')
+    errorMessage.value = '请输入用户名和密码'
     return
   }
-  
-  // 这里可以添加登录逻辑
-  console.log('登录信息:', {
-    username: username.value,
-    password: password.value
-  })
-  
-  // 模拟登录成功，跳转到考试页面
-  alert('登录成功！')
-  router.push('/exam')
+
+  loading.value = true
+  errorMessage.value = ''
+
+  try {
+    // 创建FormData对象，适配后端的Form(...)接口
+    const formData = new FormData()
+    formData.append('username', username.value)
+    formData.append('password', password.value)
+
+    // 调用后端登录接口
+    const response = await fetch('http://localhost:8000/admin/token', {
+      method: 'POST',
+      body: formData
+    })
+
+    const data = await response.json()
+
+    if (response.ok && data.code === 20000) {
+      // 登录成功，保存token
+      localStorage.setItem('adminToken', data.token)
+      localStorage.setItem('adminTokenType', data.token_type)
+      
+      console.log('登录成功:', data)
+      alert('登录成功！')
+      router.push('/exam')
+    } else {
+      // 登录失败
+      errorMessage.value = data.detail || '登录失败，请检查用户名和密码'
+      console.error('登录失败:', data)
+    }
+  } catch (error) {
+    console.error('登录请求错误:', error)
+    errorMessage.value = '网络错误，请检查服务器连接'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -265,6 +311,46 @@ const handleLogin = () => {
 .login-button:disabled {
   background: #bdc3c7;
   cursor: not-allowed;
+}
+
+.error-message {
+  margin-top: 16px;
+  padding: 12px;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 6px;
+  color: #c33;
+  font-size: 14px;
+  text-align: center;
+}
+
+.register-section {
+  margin-top: 24px;
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid #e1e5e9;
+}
+
+.register-text {
+  color: #666;
+  font-size: 14px;
+  margin-right: 8px;
+}
+
+.register-link {
+  background: none;
+  border: none;
+  color: #FF3355;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  margin: 0;
+}
+
+.register-link:hover {
+  color: #E62A4A;
 }
 
 /* 响应式设计 */
