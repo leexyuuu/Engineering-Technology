@@ -161,7 +161,7 @@ def check_exam_time(exam: Exam):
 
 
 @app.post("/student/login")
-async def login(student:StudentLogin= Depends(), db: Session = Depends(get_db)):
+async def login(student: StudentLogin, db: Session = Depends(get_db)):
     db_student  = authenticate_student(student.phone, student.password, db)
     if db_student:
         token = create_access_token(data={"sub": db_student.id})

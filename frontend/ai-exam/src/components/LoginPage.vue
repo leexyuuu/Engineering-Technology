@@ -106,30 +106,31 @@ const handleLogin = async () => {
   errorMessage.value = ''
 
   try {
-    // 创建FormData对象，适配后端的Form(...)接口
-    const formData = new FormData()
-    formData.append('username', username.value)
-    formData.append('password', password.value)
-
-    // 调用后端登录接口
-    const response = await fetch('http://localhost:8000/admin/token', {
+    // 调用后端学生登录接口
+    const response = await fetch('http://localhost:8000/student/login', {
       method: 'POST',
-      body: formData
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        phone: username.value,
+        password: password.value
+      })
     })
 
     const data = await response.json()
 
     if (response.ok && data.code === 20000) {
       // 登录成功，保存token
-      localStorage.setItem('adminToken', data.token)
-      localStorage.setItem('adminTokenType', data.token_type)
+      localStorage.setItem('studentToken', data.token)
+      localStorage.setItem('studentData', JSON.stringify(data.data))
       
       console.log('登录成功:', data)
       alert('登录成功！')
       router.push('/exam')
     } else {
       // 登录失败
-      errorMessage.value = data.detail || '登录失败，请检查用户名和密码'
+      errorMessage.value = data.message || '登录失败，请检查手机号码和密码'
       console.error('登录失败:', data)
     }
   } catch (error) {
