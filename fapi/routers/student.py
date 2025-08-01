@@ -114,7 +114,7 @@ def authenticate_student(phone: str, password: str, db: Session):
 
 
 @app.post("/student/register")
-def create_student(student: StudentCreate = Depends(), db: Session = Depends(get_db)):
+def create_student(student: StudentCreate, db: Session = Depends(get_db)):
     db_student = authenticate_student(student.phone,student.password,db)
     if db_student:
         token = create_access_token(data={"sub": db_student.id})
@@ -162,36 +162,13 @@ def check_exam_time(exam: Exam):
 
 
 @app.post("/student/login")
-async def login(student:StudentLogin= Depends(), db: Session = Depends(get_db)):
+async def login(student: StudentLogin, db: Session = Depends(get_db)):
     db_student  = authenticate_student(student.phone, student.password, db)
     if db_student:
         token = create_access_token(data={"sub": db_student.id})
         return {"code":20000,"data":db_student,"token": token}
     return {"code":1,"message":"登录失败，请检测电话跟密码是否正确"}
     
-
-@app.post("/student/register")
-def register_student(student: StudentCreate = Depends(), db: Session = Depends(get_db)):
-    db_student  = authenticate_student(student.phone, student.password, db)
-    if db_student:
-        token = create_access_token(data={"sub": db_student.id})
-        return {"code":20000,"data":db_student,"token": token}
-    hashed_password = get_password_hash(student.password)
-    db_student = Student(
-        name=student.name,
-        phone=student.phone,
-        password=hashed_password,
-        avatar=student.avatar,
-        gender=student.gender,
-        id_number=student.id_number,
-        exam_number=student.exam_number
-    )
-    db.add(db_student)
-    db.commit()
-    db.refresh(db_student)
-    token = create_access_token(data={"sub": db_student.id})
-    return {"code":20000,"data":db_student,"token": token}
-
 
 # 认证相关接口
 @app.post("/student/token")
