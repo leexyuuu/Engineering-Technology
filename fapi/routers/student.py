@@ -66,11 +66,12 @@ class StudentLogin(BaseModel):
 
 
 class StudentExamStart(BaseModel):
-    exam_id: str
+    exam_id: int
 
 
 class AnswerSubmit(BaseModel):
-    question_id: str
+    question_id: int
+    exam_id: int
     option_answers: Optional[str] = None
 
 
@@ -234,7 +235,7 @@ def create_student(student: StudentCreate = Depends(), token: str = Header(..., 
     return {"code":20000,"data":db_student}
 
 @app.put("/students/{id}")
-def update_student(id:str,student: StudentCreate = Depends(), token: str = Header(..., alias="Authorization"),db: Session = Depends(get_db)):
+def update_student(id:int,student: StudentCreate = Depends(), token: str = Header(..., alias="Authorization"),db: Session = Depends(get_db)):
     checkToken(token)
     db_student = db.query(Student).filter(Student.id ==id).first()
     if db_student is None:
@@ -252,7 +253,7 @@ def update_student(id:str,student: StudentCreate = Depends(), token: str = Heade
     return {"code":20000,"data":db_student}
 
 @app.get("/students/{id}")
-def read_student(id: str, token: str = Header(..., alias="Authorization"),db: Session = Depends(get_db)):
+def read_student(id: int, token: str = Header(..., alias="Authorization"),db: Session = Depends(get_db)):
     checkToken(token)
     student = db.query(Student).filter(Student.id == id).first()
     if student is None:
@@ -260,7 +261,7 @@ def read_student(id: str, token: str = Header(..., alias="Authorization"),db: Se
     return {"code":20000,"data":student}
 
 @app.delete("/students/{id}")
-def delete_question(id: str,token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
+def delete_question(id:int,token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
     checkToken(token)
     db_area = db.query(Student).filter(Student.id == id).first()
     if db_area is None:
@@ -324,7 +325,7 @@ def start_exam(
 
 @app.get("/student/exams/{exam_id}")
 def get_student_exam(
-    exam_id: str,
+    exam_id: int,
     current_student: Student = Depends(get_current_student),
     db: Session = Depends(get_db)
 ):
@@ -340,7 +341,7 @@ def get_student_exam(
 
 @app.post("/student/exams/{exam_id}/submit")
 def submit_exam(
-    exam_id: str,
+    exam_id: int,
     current_student: Student = Depends(get_current_student),
     db: Session = Depends(get_db)
     
@@ -381,14 +382,13 @@ async def read_students_me(current_student: Student = Depends(get_current_studen
 
 @app.post("/student/answers/save")
 async def upload_answer(
-    exam_id: str = Form(...),
     item:AnswerSubmit =Depends(),
     current_student: Student = Depends(get_current_student),
     db: Session = Depends(get_db)
 ):
     student_exam = db.query(StudentExam).filter(
         StudentExam.student_id == current_student.id,
-        StudentExam.exam_id == exam_id,
+        StudentExam.exam_id ==item.exam_id,
         StudentExam.status == "in_progress"
     ).first()
     
@@ -426,8 +426,8 @@ async def upload_answer(
 
 @app.post("/student/answers/file")
 async def upload_answer_file(
-    question_id: str = Form(...),
-    exam_id: str = Form(...),
+    question_id: int,
+    exam_id: int,
     file: UploadFile = File(...),
     current_student: Student = Depends(get_current_student),
     db: Session = Depends(get_db)
@@ -493,8 +493,8 @@ async def upload_answer_file(
 
 @app.get("/student/exams/{exam_id}/result/{student_id}")
 def get_exam_result(
-    exam_id: str,
-    student_id:str,
+    exam_id: int,
+    student_id:int,
     token: str = Header(..., alias="Authorization"),
     db: Session = Depends(get_db)
 ):

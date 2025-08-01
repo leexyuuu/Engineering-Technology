@@ -6,9 +6,11 @@ import os
 import uuid
 from jose import JWTError, jwt
 import shutil
+import time
 
 def generate_uuid():
-    return str(uuid.uuid4())  # 返回字符串类型的 UUID
+   # new_uuid = uuid.uuid4()
+    return str(time.time())  # 返回字符串类型的 UUID
 class RoleModel(Base):
     __tablename__ = "roles"
     id = Column(Integer, primary_key=True, index=True)
@@ -154,7 +156,7 @@ class ReplyModel(Base):
 
 class Exam(Base):
     __tablename__ = "exams"
-    id = Column(String, primary_key=True, default=generate_uuid)
+    id = Column(Integer, primary_key=True, index=True)
 
     name = Column(String(100), nullable=False)
     description = Column(Text)
@@ -169,9 +171,9 @@ class Exam(Base):
 class Question(Base):
     __tablename__ = "questions"
     
-    id = Column(String, primary_key=True,default=generate_uuid())
+    id = Column(Integer, primary_key=True, index=True)
 
-    exam_id = Column(String, ForeignKey("exams.id"), nullable=False)
+    exam_id = Column(Integer, ForeignKey("exams.id"), nullable=False)
     order = Column(Integer, nullable=False)  # 题目顺序
     content = Column(Text, nullable=False)
     requires_file = Column(Boolean, default=False)
@@ -185,7 +187,7 @@ class Question(Base):
 class Student(Base):
     __tablename__ = "students"
     
-    id = Column(String, primary_key=True, default=generate_uuid)
+    id = Column(Integer, primary_key=True, index=True)
 
     name = Column(String(50), nullable=False)
     avatar = Column(String(255))  # 头像URL
@@ -200,10 +202,10 @@ class Student(Base):
 class StudentExam(Base):
     __tablename__ = "student_exams"
     
-    id = Column(String, primary_key=True, default=generate_uuid)
+    id = Column(Integer, primary_key=True, index=True)
 
-    student_id = Column(String, ForeignKey("students.id"), nullable=False)
-    exam_id = Column(String, ForeignKey("exams.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    exam_id = Column(Integer, ForeignKey("exams.id"), nullable=False)
     start_time = Column(DateTime)  # 学生开始考试时间
     end_time = Column(DateTime)  # 学生提交时间
     status = Column(String(20), default="not_started")  # not_started, in_progress, submitted
@@ -215,10 +217,10 @@ class StudentExam(Base):
 class StudentAnswer(Base):
     __tablename__ = "student_answers"
     
-    id = Column(String, primary_key=True, default=generate_uuid)
-    student_exam_id = Column(String, ForeignKey("student_exams.id"), nullable=False)
+    id =  Column(Integer, primary_key=True, index=True)
+    student_exam_id = Column(Integer, ForeignKey("student_exams.id"), nullable=False)
     answer_text = Column(Text)  # 用于填空题
-    question_id=Column(String, ForeignKey("questions.id"), nullable=False)
+    question_id=Column(Integer, ForeignKey("questions.id"), nullable=False)
     file_url = Column(String(255))  # 文件题的文件URL
     option_answers = Column(Text().with_variant(Text(4294967295), 'mysql')) 
     

@@ -49,7 +49,7 @@ class ExamCreate(BaseModel):
     duration_minutes: int
 
 class QuestionCreate(BaseModel):
-    exam_id: str
+    exam_id: int
     order: int
     uuid:str
     content: str
@@ -99,7 +99,7 @@ def read_exams(page: int = 1, page_size: int = 20, db: Session = Depends(get_db)
 
 
 @app.get("/exam/{exam_id}")
-def read_exam(exam_id: str, db: Session = Depends(get_db)):
+def read_exam(exam_id: int, db: Session = Depends(get_db)):
     exam = db.query(Exam).filter(Exam.id == exam_id).first()
     if exam is None:
         raise HTTPException(status_code=404, detail="没有找到这个考试")
@@ -107,7 +107,7 @@ def read_exam(exam_id: str, db: Session = Depends(get_db)):
 
 
 @app.put("/exam/{exam_id}")
-def update_exam(exam_id: str, exam: ExamCreate=Depends(),token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
+def update_exam(exam_id: int, exam: ExamCreate=Depends(),token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
     checkToken(token)
     db_exam = db.query(Exam).filter(Exam.id == exam_id).first()
     if db_exam is None:
@@ -123,6 +123,7 @@ def update_exam(exam_id: str, exam: ExamCreate=Depends(),token: str = Header(...
 @app.post("/exam/questions/create")
 def create_question(question: QuestionCreate=Depends(), token: str = Header(..., alias="Authorization"), db: Session = Depends(get_db)):
     checkToken(token)
+
     db_question = Question(**question.dict())
    # db_question.sub_questions=str_to_sub_questions(question.sub_questions_str)
     db.add(db_question)
@@ -132,7 +133,7 @@ def create_question(question: QuestionCreate=Depends(), token: str = Header(...,
     return {"code":20000,"data":db_question}
 
 @app.put("/exam/questions/{question_id}")
-def update_questions(question_id: str, question: QuestionCreate=Depends(),token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
+def update_questions(question_id:int, question: QuestionCreate=Depends(),token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
     checkToken(token)
     db_exam = db.query(Question).filter(Question.id == question_id).first()
     if db_exam is None:
@@ -145,7 +146,7 @@ def update_questions(question_id: str, question: QuestionCreate=Depends(),token:
     return {"code":20000,"data":db_exam}
 
 @app.delete("/exam/questions/{question_id}")
-def delete_question(question_id: str,token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
+def delete_question(question_id:int,token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
     checkToken(token)
     db_area = db.query(Question).filter(Question.id == question_id).first()
     if db_area is None:
@@ -158,7 +159,7 @@ def delete_question(question_id: str,token: str = Header(..., alias="Authorizati
 
 
 @app.get("/exam/questions/{question_id}")
-def read_question(question_id: str, db: Session = Depends(get_db)):
+def read_question(question_id:int, db: Session = Depends(get_db)):
     question = db.query(Question).filter(Question.id == question_id).first()
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
@@ -166,12 +167,12 @@ def read_question(question_id: str, db: Session = Depends(get_db)):
     return {"code":20000,"data":question}
 
 @app.get("/exam/{exam_id}/questions")
-def read_exam_questions(exam_id: str, db: Session = Depends(get_db)):
+def read_exam_questions(exam_id:int, db: Session = Depends(get_db)):
     questions = db.query(Question).filter(Question.exam_id == exam_id).order_by(Question.order).all()
     return {"code":20000,"data":{"items":  questions}}
 
 @app.get("/exam/{exam_id}/students")
-def read_exam_students(exam_id: str, page: int = 1, page_size: int = 20, db: Session = Depends(get_db)):
+def read_exam_students(exam_id:int, page: int = 1, page_size: int = 20, db: Session = Depends(get_db)):
     """获取参加某场考试的学生列表，包含考试结果"""
     # 查询该考试的所有学生考试记录
     total = db.query(StudentExam).filter(StudentExam.exam_id == exam_id).count()
