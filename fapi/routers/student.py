@@ -15,7 +15,7 @@ from fastapi.exceptions import RequestValidationError
 import os
 import uuid
 import json
-import login
+from login import checkUserToken,checkEdit
 from admin import checkToken
 from jose import JWTError, jwt
 import shutil
@@ -150,7 +150,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 async def get_current_student(token: str = Header(..., alias="Authorization")):
-    return login.checkToken(token)
+    return checkUserToken(token)
     
 
 def check_exam_time(exam: Exam):
@@ -524,7 +524,7 @@ def get_exam_result(
     db: Session = Depends(get_db)
 ):
   
-    login.checkEdit(token,student_id)
+    checkEdit(token,student_id)
     # 获取学生考试记录
     student_exam = db.query(StudentExam).filter(
         StudentExam.student_id == student_id,

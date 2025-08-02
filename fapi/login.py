@@ -81,6 +81,19 @@ def checkToken(token: str ):
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
+def checkUserToken(token: str ):
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    id = payload.get("sub")
+    user = getUser(id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
 def checkEdit(token: str,userId:int):
     id=0
     try:

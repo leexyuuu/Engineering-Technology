@@ -198,7 +198,7 @@ export default {
       
       fetchStudentExamResult(this.exam_id, this.student_id)
         .then(res => {
-          this.examResults = res.data || []
+          this.examResults = res.data.questions || []
           this.loading = false
         })
         .catch(error => {
