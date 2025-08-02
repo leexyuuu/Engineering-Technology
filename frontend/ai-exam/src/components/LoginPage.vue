@@ -127,6 +127,36 @@ const handleLogin = async () => {
       
       console.log('登录成功:', data)
       alert('登录成功！')
+
+      // 如果有可参加的考试，获取试题
+      if (data.data.upcoming_exam && data.data.upcoming_exam.exam_id) {
+        try {
+          const examResponse = await fetch(`http://localhost:8000/student/exams/${data.data.upcoming_exam.exam_id}/result/${data.data.id}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${data.token}`,
+              'Content-Type': 'application/json',
+            }
+          })
+          
+          const examData = await examResponse.json()
+          
+          if (examResponse.ok && examData.code === 20000) {
+            console.log('获取试题成功:', examData)
+            localStorage.setItem('examQuestions', JSON.stringify(examData.data))
+            alert('登录成功！已获取试题信息')
+          } else {
+            console.error('获取试题失败:', examData)
+            alert('登录成功！但获取试题失败')
+          }
+        } catch (examError) {
+          console.error('获取试题请求错误:', examError)
+          alert('登录成功！但获取试题时发生错误')
+        }
+      } else {
+        alert('登录成功！暂无可参加的考试')
+      }
+
       router.push('/exam')
     } else {
       // 登录失败
