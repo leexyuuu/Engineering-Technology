@@ -179,7 +179,11 @@ class Question(Base):
     requires_file = Column(Boolean, default=False)
     file_description = Column(Text)
     uuid = Column(Text)
-    sub_questions_str = Column(Text().with_variant(Text(4294967295), 'mysql')) 
+    sub_questions_str = Column(Text().with_variant(Text(4294967295), 'mysql'))
+    # 多文件答题相关字段
+    required_files = Column(Text().with_variant(Text(4294967295), 'mysql'))  # JSON格式存储多个文件要求
+    # 资料文件相关字段
+    material_files = Column(Text().with_variant(Text(4294967295), 'mysql'))  # JSON格式存储资料文件
     exam = relationship("Exam", back_populates="questions")
     
 

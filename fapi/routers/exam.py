@@ -56,6 +56,8 @@ class QuestionCreate(BaseModel):
     requires_file: bool
     file_description: Optional[str] 
     sub_questions_str: Optional[str]
+    required_files: Optional[str]  # JSON格式的多文件要求
+    material_files: Optional[str]  # JSON格式的资料文件
 
 
 @app.exception_handler(RequestValidationError)
@@ -206,4 +208,50 @@ def read_exam_students(exam_id:int, page: int = 1, page_size: int = 20, db: Sess
         result.append(student_data)
     
     return {"code": 20000, "data": {"total": total, "items": result}}
+
+# 文件上传接口
+@app.post("/exam/upload-file")
+async def upload_file(
+    file: UploadFile = File(...),
+    token: str = Header(..., alias="Authorization")
+):
+    """上传文件接口"""
+    #checkToken(token)
+    
+    # 确保上传目录存在
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    
+    # 生成唯一文件名
+    file_extension = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+    
+    try:
+        # 保存文件
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # 返回文件URL
+        file_url = f"/uploads/{unique_filename}"
+        
+        return {
+            "code": 20000,
+            "data": {
+                "filename": file.filename,
+                "url": file_url,
+                "size": os.path.getsize(file_path)
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"文件上传失败: {str(e)}")
+
+@app.get("/uploads/{filename}")
+async def get_file(filename: str):
+    """获取上传的文件"""
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="文件不存在")
+    
+    from fastapi.responses import FileResponse
+    return FileResponse(file_path)
     

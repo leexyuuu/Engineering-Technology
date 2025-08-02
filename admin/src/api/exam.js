@@ -147,4 +147,15 @@ export function fetchStudentExamResult(exam_id, student_id) {
     url: `/api/student/exams/${exam_id}/result/${student_id}`,
     method: 'get'
   })
+}
+
+// 文件上传API
+export function uploadFile(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/api/exam/upload-file',
+    method: 'post',
+    params: formData
+  })
 } 

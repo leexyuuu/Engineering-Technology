@@ -18,12 +18,135 @@
       <el-form-item label="需要上传文件答题">
         <el-switch v-model="form.requires_file" />
       </el-form-item>
-      <el-form-item label="文件说明" v-if="form.requires_file">
-        <el-input
-          v-model="form.file_description"
-          type="textarea"
-          :autosize="{ minRows: 1, maxRows: 4 }"
-        />
+      
+      <!-- 多文件答题设置 -->
+      <el-form-item label="多文件答题设置" v-if="form.requires_file">
+        <div style="margin-bottom: 16px;">
+          <el-button type="primary" size="mini" @click="addRequiredFile">
+            添加文件要求
+          </el-button>
+        </div>
+        <div
+          v-for="(file, idx) in form.required_files"
+          :key="file.uuid"
+          style="
+            margin-bottom: 16px;
+            border: 1px solid #eee;
+            padding: 16px;
+            border-radius: 4px;
+          "
+        >
+          <el-row :gutter="16">
+            <el-col :span="8">
+              <el-form-item :label="'文件名称'" :prop="'required_files.' + idx + '.name'">
+                <el-input v-model="file.name" placeholder="请输入文件名称" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item :label="'文件类型'" :prop="'required_files.' + idx + '.type'">
+                <el-select v-model="file.type" placeholder="请选择文件类型" style="width: 100%">
+                  <el-option label="PDF" value="pdf" />
+                  <el-option label="Word" value="doc" />
+                  <el-option label="Excel" value="xls" />
+                  <el-option label="图片" value="image" />
+                  <el-option label="其他" value="other" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item :label="'是否必填'">
+                <el-switch v-model="file.required" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item :label="'文件说明'" :prop="'required_files.' + idx + '.description'">
+            <el-input
+              v-model="file.description"
+              type="textarea"
+              :autosize="{ minRows: 1, maxRows: 3 }"
+              placeholder="请输入文件说明"
+            />
+          </el-form-item>
+          <el-button
+            type="danger"
+            size="mini"
+            @click="removeRequiredFile(idx)"
+            style="margin-top: 8px"
+          >
+            删除文件要求
+          </el-button>
+        </div>
+      </el-form-item>
+      
+      <!-- 资料文件设置 -->
+      <el-form-item label="资料文件">
+        <div style="margin-bottom: 16px;">
+          <el-button type="primary" size="mini" @click="addMaterialFile">
+            添加资料文件
+          </el-button>
+        </div>
+        <div
+          v-for="(file, idx) in form.material_files"
+          :key="file.uuid"
+          style="
+            margin-bottom: 16px;
+            border: 1px solid #eee;
+            padding: 16px;
+            border-radius: 4px;
+          "
+        >
+          <el-row :gutter="16">
+            <el-col :span="8">
+              <el-form-item :label="'文件名称'" :prop="'material_files.' + idx + '.name'">
+                <el-input v-model="file.name" placeholder="请输入文件名称" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item :label="'文件类型'" :prop="'material_files.' + idx + '.type'">
+                <el-select v-model="file.type" placeholder="请选择文件类型" style="width: 100%">
+                  <el-option label="PDF" value="pdf" />
+                  <el-option label="Word" value="doc" />
+                  <el-option label="Excel" value="xls" />
+                  <el-option label="图片" value="image" />
+                  <el-option label="其他" value="other" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item :label="'上传文件'">
+                <el-upload
+                  :action="uploadUrl"
+                  :headers="uploadHeaders"
+                  :on-success="(res) => handleMaterialFileSuccess(res, idx)"
+                  :on-error="handleUploadError"
+                  :show-file-list="false"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
+                >
+                  <el-button size="mini" type="primary">选择文件</el-button>
+                </el-upload>
+                <span v-if="file.url" style="margin-left: 8px; color: #67c23a;">
+                  已上传: {{ file.originalName }}
+                </span>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item :label="'文件说明'" :prop="'material_files.' + idx + '.description'">
+            <el-input
+              v-model="file.description"
+              type="textarea"
+              :autosize="{ minRows: 1, maxRows: 3 }"
+              placeholder="请输入文件说明"
+            />
+          </el-form-item>
+          <el-button
+            type="danger"
+            size="mini"
+            @click="removeMaterialFile(idx)"
+            style="margin-top: 8px"
+          >
+            删除资料文件
+          </el-button>
+        </div>
       </el-form-item>
       <el-form-item label="子问题列表">
         <div
@@ -167,6 +290,8 @@ export default {
         requires_file: false,
         file_description: "",
         sub_questions: [],
+        required_files: [], // 多文件答题要求
+        material_files: [], // 资料文件
       },
       rules: {
         content: [
@@ -175,6 +300,10 @@ export default {
       },
       exam_id: null,
       question_id: null,
+      uploadUrl: "/api/exam/upload-file",
+      uploadHeaders: {
+        Authorization: localStorage.getItem("token") || "",
+      },
     };
   },
   created() {
@@ -189,13 +318,17 @@ export default {
         // 2. 验证解析结果是否为数组
         if (!Array.isArray(parsedData)) {
           this.form = {
-            ...data
+            ...data,
+            required_files: data.required_files ? JSON.parse(data.required_files) : [],
+            material_files: data.material_files ? JSON.parse(data.material_files) : [],
           };
         }
         else{
           this.form = {
             ...data,
-             sub_questions: parsedData
+            sub_questions: parsedData,
+            required_files: data.required_files ? JSON.parse(data.required_files) : [],
+            material_files: data.material_files ? JSON.parse(data.material_files) : [],
           };
         }
         
@@ -224,6 +357,45 @@ export default {
     removeOption(subIdx, optIdx) {
       this.form.sub_questions[subIdx].options.splice(optIdx, 1);
     },
+    // 多文件答题相关方法
+    addRequiredFile() {
+      this.form.required_files.push({
+        name: "",
+        type: "pdf",
+        required: true,
+        description: "",
+        uuid: uuid(),
+      });
+    },
+    removeRequiredFile(idx) {
+      this.form.required_files.splice(idx, 1);
+    },
+    // 资料文件相关方法
+    addMaterialFile() {
+      this.form.material_files.push({
+        name: "",
+        type: "pdf",
+        description: "",
+        url: "",
+        originalName: "",
+        uuid: uuid(),
+      });
+    },
+    removeMaterialFile(idx) {
+      this.form.material_files.splice(idx, 1);
+    },
+    handleMaterialFileSuccess(res, idx) {
+      if (res.code === 20000) {
+        this.form.material_files[idx].url = res.data.url;
+        this.form.material_files[idx].originalName = res.data.filename;
+        this.$message.success("文件上传成功");
+      } else {
+        this.$message.error("文件上传失败");
+      }
+    },
+    handleUploadError() {
+      this.$message.error("文件上传失败");
+    },
     onSubmit() {
       this.$refs.form.validate((valid) => {
         if (!valid) return;
@@ -231,9 +403,11 @@ export default {
         const submitData = {
           ...this.form,
           sub_questions_str: JSON.stringify(this.form.sub_questions),
+          required_files: JSON.stringify(this.form.required_files),
+          material_files: JSON.stringify(this.form.material_files),
         };
         submitData.sub_questions = null;
-         submitData.id=null
+        submitData.id = null;
 
         const action = this.question_id
           ? updateExamQuestion(this.question_id, submitData)
