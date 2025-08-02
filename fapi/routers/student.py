@@ -6,8 +6,10 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel,Field,ConfigDict 
 from models import engine, Exam, Question, Student, StudentExam, StudentAnswer
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
+
 from base import app,get_db
 from fastapi.exceptions import RequestValidationError
 import os
@@ -160,14 +162,59 @@ def check_exam_time(exam: Exam):
     else:
         return "in_progress"
 
+def get_student_with_upcoming_exam(student: Student, db: Session):
+    """获取学生数据，包含最近即将开始的考试信息"""
+    from datetime import datetime
+    now = datetime.now()
+    
+    # 查询学生绑定的考试，按考试开始时间排序，只获取未开始且即将开始的考试
+    upcoming_exam = db.query(StudentExam).join(Exam).filter(
+        and_(
+            StudentExam.student_id == student.id,
+            Exam.end_time > now,  # 考试还未结束
+            StudentExam.status != "submitted"  # 学生还未交卷
+        )
+    ).order_by(Exam.start_time.asc()).first()
+    
+    # 构建学生数据，包含最近的考试信息
+    student_data = {
+        "id": student.id,
+        "name": student.name,
+        "phone": student.phone,
+        "avatar": student.avatar,
+        "gender": student.gender,
+        "id_number": student.id_number,
+        "exam_number": student.exam_number,
+        "upcoming_exam": None
+    }
+    
+    # 如果有即将开始的考试，添加到学生数据中
+    if upcoming_exam:
+        student_data["upcoming_exam"] = {
+            "id": upcoming_exam.id,
+            "exam_id": upcoming_exam.exam_id,
+            "exam_name": upcoming_exam.exam.name,
+            "exam_description": upcoming_exam.exam.description,
+            "exam_instructions": upcoming_exam.exam.instructions,
+            "exam_start_time": upcoming_exam.exam.start_time.isoformat() if upcoming_exam.exam.start_time else None,
+            "exam_end_time": upcoming_exam.exam.end_time.isoformat() if upcoming_exam.exam.end_time else None,
+            "exam_duration_minutes": upcoming_exam.exam.duration_minutes,
+            "student_start_time": upcoming_exam.start_time.isoformat() if upcoming_exam.start_time else None,
+            "student_end_time": upcoming_exam.end_time.isoformat() if upcoming_exam.end_time else None,
+            "status": upcoming_exam.status
+        }
+    
+    return student_data
+
 
 @app.post("/student/login")
 async def login(student: StudentLogin, db: Session = Depends(get_db)):
-    db_student  = authenticate_student(student.phone, student.password, db)
+    db_student = authenticate_student(student.phone, student.password, db)
     if db_student:
+        student_data = get_student_with_upcoming_exam(db_student, db)
         token = create_access_token(data={"sub": db_student.id})
-        return {"code":20000,"data":db_student,"token": token}
-    return {"code":1,"message":"登录失败，请检测电话跟密码是否正确"}
+        return {"code": 20000, "data": student_data, "token": token}
+    return {"code": 1, "message": "登录失败，请检测电话跟密码是否正确"}
     
 
 # 认证相关接口
@@ -180,14 +227,15 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             detail="Incorrect phone or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-   
+    
+    student_data = get_student_with_upcoming_exam(student, db)
     token = create_access_token(data={"sub": student.id})
-    return {"code":20000,"data":student,"token": token}
+    return {"code": 20000, "data": student_data, "token": token}
 
 
 @app.get("/students/me")
-async def read_students_me(current_student: Student = Depends(get_current_student)):
-    return current_student
+async def read_students_me(current_student: Student = Depends(get_current_student), db: Session = Depends(get_db)):
+    return get_student_with_upcoming_exam(current_student, db)
 
 
 @app.post("/students/create")
@@ -467,7 +515,7 @@ async def upload_answer_file(
 
 
 
-
+#返回考试跟题目数据
 @app.get("/student/exams/{exam_id}/result/{student_id}")
 def get_exam_result(
     exam_id: int,
@@ -475,7 +523,8 @@ def get_exam_result(
     token: str = Header(..., alias="Authorization"),
     db: Session = Depends(get_db)
 ):
-    checkToken(token)
+  
+    login.checkEdit(token,student_id)
     # 获取学生考试记录
     student_exam = db.query(StudentExam).filter(
         StudentExam.student_id == student_id,
@@ -522,7 +571,7 @@ def get_exam_result(
     
     return {
         "code": 20000,
-        "data":results
+        "data":{'exam':student_exam,'questions':results}
     }
 
 # 静态文件服务
