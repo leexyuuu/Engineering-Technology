@@ -30,6 +30,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# 密码哈希函数
+def get_password_hash(password: str):
+    return pwd_context.hash(password)
+
 
 @app.middleware("http")
 async def add_cors_headers(request: Request, call_next):
@@ -58,6 +62,8 @@ class QuestionCreate(BaseModel):
     sub_questions_str: Optional[str]
     required_files: Optional[str]  # JSON格式的多文件要求
     material_files: Optional[str]  # JSON格式的资料文件
+
+
 
 
 @app.exception_handler(RequestValidationError)
@@ -254,4 +260,4 @@ async def get_file(filename: str):
     
     from fastapi.responses import FileResponse
     return FileResponse(file_path)
-    
+

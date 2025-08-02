@@ -159,3 +159,12 @@ export function uploadFile(file) {
     params: formData
   })
 } 
+
+// 导入学生到考试API
+export function importStudentsToExam(data) {
+  return request({
+    url: '/api/exam/import-students',
+    method: 'post',
+    params: data
+  })
+} 

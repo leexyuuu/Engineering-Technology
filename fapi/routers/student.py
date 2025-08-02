@@ -529,3 +529,94 @@ def get_exam_result(
 from fastapi.staticfiles import StaticFiles
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
+class StudentImportItem(BaseModel):
+    name: str
+    phone: str
+
+class StudentImportRequest(BaseModel):
+    exam_id: int
+    student_strs: str
+    
+@app.post("/exam/import-students")
+def import_students_to_exam(
+    import_data: StudentImportRequest=Depends(),
+    token: str = Header(..., alias="Authorization"),
+    db: Session = Depends(get_db)
+):
+    """导入学生到考试"""
+    checkToken(token)
+    exam_id=import_data.exam_id
+    
+    # 检查考试是否存在
+    exam = db.query(Exam).filter(Exam.id == import_data.exam_id).first()
+    if not exam:
+        return {"code": 404, "message": "考试不存在"}
+    
+    success_count = 0
+    error_count = 0
+    errors = []
+    python_list = json.loads(import_data.student_strs)
+        
+    students: List[StudentImportItem]  = [StudentImportItem(**item) for item in python_list]
+       
+    for student_data in students:
+        try:
+            # 检查学生是否已存在
+            existing_student = db.query(Student).filter(Student.phone == student_data.phone).first()
+            
+            if existing_student:
+                # 学生已存在，直接使用
+                student = existing_student
+            else:
+                # 学生不存在，创建新学生
+                # 密码默认为电话号码后四位
+                password = student_data.phone[-4:]
+                hashed_password = get_password_hash(password)
+                
+                student = Student(
+                    name=student_data.name,
+                    phone=student_data.phone,
+                    password=hashed_password
+                )
+                db.add(student)
+                db.commit()
+                db.refresh(student)
+            
+            # 检查学生是否已经绑定到这场考试
+            existing_exam = db.query(StudentExam).filter(
+                StudentExam.student_id == student.id,
+                StudentExam.exam_id == exam_id
+            ).first()
+            
+            if not existing_exam:
+                # 创建学生考试绑定记录
+                student_exam = StudentExam(
+                    student_id=student.id,
+                    exam_id=exam_id,
+                    start_time=None,  # 学生还没有开始考试
+                    status="not_started"  # 未开始状态
+                )
+                db.add(student_exam)
+                db.commit()
+                success_count += 1
+            else:
+                # 学生已经绑定到这场考试
+                errors.append(f"学生 {student_data.name} ({student_data.phone}) 已经绑定到这场考试")
+                error_count += 1
+                
+        except Exception as e:
+            errors.append(f"导入学生 {student_data.name} ({student_data.phone}) 失败: {str(e)}")
+            error_count += 1
+    
+    return {
+        "code": 20000,
+        "data": {
+            "success_count": success_count,
+            "error_count": error_count,
+            "errors": errors,
+            "message": f"成功导入 {success_count} 名学生，失败 {error_count} 名"
+        }
+    }
+    
+
+
