@@ -530,6 +530,10 @@ def get_exam_result(
         StudentExam.student_id == student_id,
         StudentExam.exam_id == exam_id
     ).first()
+
+    exam = db.query(Exam).filter(
+        Exam.id == exam_id
+    ).first()
     
     if not student_exam:
         raise HTTPException(status_code=404, detail="Submitted exam not found")
@@ -556,7 +560,7 @@ def get_exam_result(
             "id": question.id,
             "order": question.order,
             "content": question.content,
-            "requires_file": question.requires_file,
+            "required_files": question.required_files,
             "file_description": question.file_description,
             "uuid": question.uuid,
             "sub_questions_str": question.sub_questions_str,
@@ -571,7 +575,7 @@ def get_exam_result(
     
     return {
         "code": 20000,
-        "data":{'exam':student_exam,'questions':results}
+        "data":{'exam':exam,"student_exam":student_exam,'questions':results}
     }
 
 # 静态文件服务

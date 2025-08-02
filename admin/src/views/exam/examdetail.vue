@@ -14,14 +14,11 @@
               <span class="label">手机号：</span>
               <span class="value">{{ studentInfo.phone }}</span>
             </div>
-            <div class="info-item">
-              <span class="label">准考证号：</span>
-              <span class="value">{{ studentInfo.exam_number }}</span>
-            </div>
+          
             <div class="info-item">
               <span class="label">考试状态：</span>
-              <el-tag :type="getStatusType(studentInfo.status)" size="medium">
-                {{ getStatusText(studentInfo.status) }}
+              <el-tag :type="getStatusType(student_exam.status)" size="medium">
+                {{ getStatusText(student_exam.status) }}
               </el-tag>
             </div>
           </div>
@@ -30,11 +27,11 @@
           <div class="exam-time-info">
             <div class="time-item">
               <span class="label">开始时间：</span>
-              <span class="value">{{ formatDateTime(studentInfo.start_time) }}</span>
+              <span class="value">{{ formatDateTime(student_exam.start_time) }}</span>
             </div>
             <div class="time-item">
               <span class="label">结束时间：</span>
-              <span class="value">{{ formatDateTime(studentInfo.end_time) }}</span>
+              <span class="value">{{ formatDateTime(student_exam.end_time) }}</span>
             </div>
           </div>
         </div>
@@ -54,7 +51,7 @@
             <span class="question-number">第{{ (index+1) }}题</span>
             <div class="question-tags">
               <el-tag size="small" type="primary">{{ getQuestionType(question) }}</el-tag>
-              <el-tag v-if="question.requires_file" size="small" type="warning">需要上传文件</el-tag>
+              <el-tag v-if="question.requires_file || question.required_files" size="small" type="warning">需要上传文件</el-tag>
             </div>
           </div>
 
@@ -118,8 +115,69 @@
               </div>
             </div>
 
-            <!-- 文件题答案 -->
-            <div v-if="question.requires_file" class="file-answer-section">
+            <!-- 多文件答题区域 -->
+            <div v-if="question.required_files" class="multi-file-answer-section">
+              <h4>多文件答题要求：</h4>
+              <div class="required-files-list">
+                <div 
+                  v-for="(requiredFile, fileIndex) in parseRequiredFiles(question.required_files)" 
+                  :key="requiredFile.uuid"
+                  class="required-file-item"
+                >
+                  <div class="file-requirement">
+                    <div class="file-header">
+                      <span class="file-name">{{ requiredFile.name || `文件${fileIndex + 1}` }}</span>
+                      <div class="file-tags">
+                        <el-tag size="mini" type="primary">{{ requiredFile.type }}</el-tag>
+                        <el-tag v-if="requiredFile.required" size="mini" type="danger">必填</el-tag>
+                        <el-tag v-else size="mini" type="info">可选</el-tag>
+                      </div>
+                    </div>
+                    <div v-if="requiredFile.description" class="file-description">
+                      <p>{{ requiredFile.description }}</p>
+                    </div>
+                  </div>
+
+                  <!-- 学生上传的文件 -->
+                  <div class="student-file-section">
+                    <h5>学生上传的文件：</h5>
+                    <div v-if="getStudentFileForRequiredFile(question, requiredFile.uuid)" class="file-display">
+                      <div v-if="isImageFile(getStudentFileForRequiredFile(question, requiredFile.uuid))" class="image-file">
+                        <div class="image-container">
+                          <img 
+                            :src="getStudentFileForRequiredFile(question, requiredFile.uuid)" 
+                            @click="previewImage(getStudentFileForRequiredFile(question, requiredFile.uuid))"
+                            class="preview-image"
+                            alt="学生上传的图片"
+                          />
+                          <div class="image-overlay">
+                            <el-button type="primary" size="small" icon="el-icon-zoom-in" @click="previewImage(getStudentFileForRequiredFile(question, requiredFile.uuid))">预览</el-button>
+                          </div>
+                        </div>
+                        <div class="file-actions">
+                          <el-button type="success" size="small" icon="el-icon-download" @click="downloadFile(getStudentFileForRequiredFile(question, requiredFile.uuid))">下载</el-button>
+                        </div>
+                      </div>
+                      <div v-else class="other-file">
+                        <div class="file-info">
+                          <i class="el-icon-document"></i>
+                          <span class="file-name">{{ getFileName(getStudentFileForRequiredFile(question, requiredFile.uuid)) }}</span>
+                        </div>
+                        <div class="file-actions">
+                          <el-button type="primary" size="small" icon="el-icon-download" @click="downloadFile(getStudentFileForRequiredFile(question, requiredFile.uuid))">下载</el-button>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="no-file">
+                      <el-tag type="info" size="medium">未上传文件</el-tag>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 单文件题答案（保持向后兼容） -->
+            <div v-else-if="question.requires_file" class="file-answer-section">
               <h4>学生上传的文件：</h4>
               <div v-if="getStudentAnswer(question) && getStudentAnswer(question).file_url" class="file-display">
                 <div v-if="isImageFile(getStudentAnswer(question).file_url)" class="image-file">
@@ -173,6 +231,7 @@ export default {
     return {
       loading: false,
       examResults: [],
+      student_exam:{},
       studentInfo: {},
       exam_id: null,
       student_id: null
@@ -199,6 +258,7 @@ export default {
       fetchStudentExamResult(this.exam_id, this.student_id)
         .then(res => {
           this.examResults = res.data.questions || []
+          this.student_exam=res.data.student_exam
           this.loading = false
         })
         .catch(error => {
@@ -215,6 +275,14 @@ export default {
         return []
       }
     },
+    parseRequiredFiles(requiredFilesStr) {
+      try {
+        return JSON.parse(requiredFilesStr)
+      } catch (e) {
+        console.error('解析required_files失败:', e)
+        return []
+      }
+    },
     parseOptionAnswers(optionAnswersStr) {
       try {
         return JSON.parse(optionAnswersStr)
@@ -225,6 +293,21 @@ export default {
     },
     getStudentAnswer(question) {
       return question.student_answer || null
+    },
+    // 获取学生为特定required_file上传的文件
+    getStudentFileForRequiredFile(question, requiredFileUuid) {
+      const studentAnswer = this.getStudentAnswer(question)
+      if (!studentAnswer || !studentAnswer.option_answers) return null
+      
+      try {
+        const fileAnswers = JSON.parse(studentAnswer.option_answers)
+        if (fileAnswers && fileAnswers[requiredFileUuid]) {
+          return fileAnswers[requiredFileUuid]
+        }
+        return null
+      } catch (e) {
+        return null
+      }
     },
     // 检查选项是否被选中
     isOptionSelected(question, subIndex, optionIndex) {
@@ -288,6 +371,7 @@ export default {
       document.body.removeChild(link)
     },
     getQuestionType(question) {
+      if (question.required_files) return '多文件题'
       if (question.requires_file) return '文件题'
       if (question.sub_questions_str) {
         const subQuestions = this.parseSubQuestions(question.sub_questions_str)
@@ -636,6 +720,93 @@ export default {
   margin-top: 8px;
 }
 
+/* 多文件答题样式 */
+.multi-file-answer-section {
+  margin: 25px 0;
+  padding: 20px;
+  background: #f0f9ff;
+  border-radius: 8px;
+  border: 1px solid #b3d8ff;
+}
+
+.multi-file-answer-section h4 {
+  color: #409eff;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.multi-file-answer-section h4::before {
+  content: "📁";
+  font-size: 18px;
+}
+
+.required-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.required-file-item {
+  background: white;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.required-file-item:hover {
+  border-color: #409eff;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
+}
+
+.file-requirement {
+  margin-bottom: 15px;
+}
+
+.file-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.file-name {
+  font-weight: 600;
+  color: #303133;
+  font-size: 16px;
+}
+
+.file-tags {
+  display: flex;
+  gap: 6px;
+}
+
+.file-description {
+  color: #606266;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.file-description p {
+  margin: 0;
+}
+
+.student-file-section {
+  border-top: 1px solid #e4e7ed;
+  padding-top: 15px;
+}
+
+.student-file-section h5 {
+  color: #409eff;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 10px 0;
+}
+
 /* 文件答案样式 */
 .file-answer-section {
   margin: 25px 0;
@@ -793,6 +964,16 @@ export default {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+  
+  .file-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .file-tags {
+    align-self: flex-end;
   }
 }
 
