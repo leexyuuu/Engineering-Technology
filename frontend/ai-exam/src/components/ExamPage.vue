@@ -4,10 +4,10 @@
     <header class="exam-header">
       <div class="header-left">
         <button class="menu-btn">☰</button>
-        <h1 class="page-title">试题单</h1>
+        <h1 class="page-title">{{ examData?.exam?.name || '试题单' }}</h1>
       </div>
       <div class="header-right">
-        <span class="user-info">姓名: 13916057361</span>
+        <span class="user-info">姓名: {{ studentData?.name || '未知用户' }}</span>
         <span class="timer">{{ formatTime(remainingTime) }}</span>
       </div>
     </header>
@@ -19,44 +19,42 @@
         <!-- 题目导航标签 -->
         <div class="question-tabs">
           <button 
-            v-for="i in 6" 
-            :key="i"
-            :class="['tab-btn', { active: currentQuestion === i }]"
-            @click="currentQuestion = i"
+            v-for="question in examData?.questions" 
+            :key="question.id"
+            :class="['tab-btn', { active: currentQuestion === question.order }]"
+            @click="currentQuestion = question.order"
           >
-            第{{ i }}题
+            第{{ question.order }}题
           </button>
         </div>
 
         <!-- 题目内容 -->
         <div class="question-content">
-          <h2 class="exam-title">{{ currentQuestionData.title }}</h2>
+          <h2 class="exam-title">{{ currentQuestionData?.content || '加载中...' }}</h2>
           
           <div class="question-info">
             <div class="info-item">
               <span class="label">试题代码:</span>
-              <span class="value">{{ currentQuestionData.code }}</span>
+              <span class="value">{{ currentQuestionData?.uuid || 'N/A' }}</span>
             </div>
             <div class="info-item">
               <span class="label">试题名称:</span>
-              <span class="value">{{ currentQuestionData.name }}</span>
+              <span class="value">{{ examData?.exam?.name || 'N/A' }}</span>
             </div>
             <div class="info-item">
               <span class="label">考试时间:</span>
-              <span class="value">{{ currentQuestionData.time }}</span>
+              <span class="value">{{ examData?.exam?.duration_minutes || 'N/A' }}分钟</span>
             </div>
           </div>
 
-          <div class="requirements">
-            <h3>场地要求:</h3>
-            <ul>
-              <li v-for="requirement in currentQuestionData.requirements" :key="requirement">{{ requirement }}</li>
-            </ul>
+          <div v-if="currentQuestionData?.file_description" class="requirements">
+            <h3>文件要求:</h3>
+            <p>{{ currentQuestionData.file_description }}</p>
           </div>
 
-          <div class="work-content">
-            <h3>工作内容:</h3>
-            <p>{{ currentQuestionData.workContent }}</p>
+          <div v-if="currentQuestionData?.sub_questions_str" class="work-content">
+            <h3>子题目:</h3>
+            <p>{{ currentQuestionData.sub_questions_str }}</p>
           </div>
         </div>
       </div>
@@ -98,9 +96,9 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(file, index) in currentQuestionData.uploadFiles" :key="index">
+                <tr v-for="(file, index) in currentQuestionRequiredFiles" :key="index">
                   <td>{{ index + 1 }}</td>
-                  <td>上传{{ file }}</td>
+                  <td>{{ file.description || `上传文件 ${index + 1}` }}</td>
                   <td>
                     <input type="file" :id="'file-' + index" style="display: none;" />
                     <label :for="'file-' + index" class="file-input-label">选择文件</label>
@@ -160,10 +158,10 @@
         </button>
         <button 
           class="nav-btn next-btn" 
-          @click="currentQuestion >= 6 ? submitExam() : goToNextQuestion()"
+          @click="currentQuestion >= (examData?.questions?.length || 6) ? submitExam() : goToNextQuestion()"
           :disabled="false"
         >
-          {{ currentQuestion >= 6 ? '交卷' : '下一题' }}
+          {{ currentQuestion >= (examData?.questions?.length || 6) ? '交卷' : '下一题' }}
         </button>
       </div>
     </footer>
@@ -184,154 +182,27 @@ const totalTime = 90 * 60 // 1小时30分钟 = 90分钟 = 5400秒
 const remainingTime = ref(totalTime)
 let timer = null
 
-// 题目数据
-const questions = ref([
-  {
-    id: 1,
-    title: '人工智能训练师三级',
-    code: '2.2.3',
-    name: '日常运动量随机森林预测模型开发与测试',
-    time: '20min',
-    requirements: [
-      '人工智能训练师主机1台;',
-      'Python 编译环境;',
-      'fitness analysis数据集。'
-    ],
-    workContent: '随着人们健康意识的增强，越来越多的人开始关注日常运动和健康管理。使用提供的训练数据，补全2.2.3.ipynb代码。选择合适的特征，开发一个预测模型，基于个体性别，个体对运动的看法和个人健康评价来预测个体年龄。利用测试工具对模型进行测试，并对测试结果进行分析，完成测试报告，并运用工具对错误原因进行纠正。',
-    uploadFiles: [
-      '2.2.3_model.pki',
-      '2.2.3_results.txt',
-      '2.2.3_report.txt',
-      '2.2.3.docx',
-      '2.2.3_results_xgb.txt',
-      '2.2.3.html'
-    ]
-  },
-  {
-    id: 2,
-    title: '人工智能训练师三级',
-    code: '2.2.4',
-    name: '电商用户行为分析模型构建',
-    time: '25min',
-    requirements: [
-      '人工智能训练师主机1台;',
-      'Python 编译环境;',
-      'ecommerce_behavior.csv数据集。'
-    ],
-    workContent: '电商平台需要分析用户行为模式以优化推荐系统。使用提供的电商用户行为数据，构建一个用户行为分析模型。分析用户的浏览、收藏、加购、购买等行为特征，建立用户画像模型，预测用户的购买概率。完成模型训练、验证和测试，并生成详细的分析报告。',
-    uploadFiles: [
-      '2.2.4_model.pkl',
-      '2.2.4_analysis.txt',
-      '2.2.4_report.txt',
-      '2.2.4_presentation.pptx',
-      '2.2.4_visualization.html'
-    ]
-  },
-  {
-    id: 3,
-    title: '人工智能训练师三级',
-    code: '2.2.5',
-    name: '图像分类CNN模型开发',
-    time: '30min',
-    requirements: [
-      '人工智能训练师主机1台;',
-      'Python 编译环境;',
-      'image_classification数据集。'
-    ],
-    workContent: '使用卷积神经网络(CNN)技术，开发一个图像分类模型。数据集包含多个类别的图像，需要构建CNN架构，进行数据预处理、模型训练和优化。实现数据增强技术，提高模型泛化能力。完成模型评估，生成分类报告和可视化结果。',
-    uploadFiles: [
-      '2.2.5_cnn_model.h5',
-      '2.2.5_training_log.txt',
-      '2.2.5_evaluation.txt',
-      '2.2.5_classification_report.txt',
-      '2.2.5_visualization.py'
-    ]
-  },
-  {
-    id: 4,
-    title: '人工智能训练师三级',
-    code: '2.2.6',
-    name: '自然语言处理文本分类',
-    time: '25min',
-    requirements: [
-      '人工智能训练师主机1台;',
-      'Python 编译环境;',
-      'text_classification.csv数据集。'
-    ],
-    workContent: '构建一个自然语言处理模型，用于文本分类任务。使用提供的文本数据集，实现文本预处理、特征提取和模型训练。应用词向量技术，构建深度学习模型进行文本分类。完成模型性能评估，生成分类准确率报告和错误分析。',
-    uploadFiles: [
-      '2.2.6_nlp_model.pkl',
-      '2.2.6_preprocessing.py',
-      '2.2.6_classification_results.txt',
-      '2.2.6_accuracy_report.txt',
-      '2.2.6_error_analysis.txt'
-    ]
-  },
-  {
-    id: 5,
-    title: '人工智能训练师三级',
-    code: '2.2.7',
-    name: '时间序列预测模型开发',
-    time: '20min',
-    requirements: [
-      '人工智能训练师主机1台;',
-      'Python 编译环境;',
-      'time_series_data.csv数据集。'
-    ],
-    workContent: '开发一个时间序列预测模型，用于预测未来趋势。使用提供的时间序列数据，实现数据清洗、特征工程和模型构建。应用ARIMA、LSTM等时间序列预测技术，完成模型训练和验证。生成预测结果和模型性能评估报告。',
-    uploadFiles: [
-      '2.2.7_arima_model.pkl',
-      '2.2.7_lstm_model.h5',
-      '2.2.7_predictions.csv',
-      '2.2.7_forecast_report.txt',
-      '2.2.7_model_comparison.txt'
-    ]
-  },
-  {
-    id: 6,
-    title: '人工智能训练师三级',
-    code: '2.2.8',
-    name: '推荐系统协同过滤算法实现',
-    time: '25min',
-    requirements: [
-      '人工智能训练师主机1台;',
-      'Python 编译环境;',
-      'recommendation_data.csv数据集。'
-    ],
-    workContent: '实现协同过滤推荐算法，构建个性化推荐系统。使用用户-物品交互数据，实现基于用户的协同过滤和基于物品的协同过滤算法。完成相似度计算、推荐生成和模型评估。生成推荐系统性能报告和用户推荐结果分析。',
-    uploadFiles: [
-      '2.2.8_user_cf_model.pkl',
-      '2.2.8_item_cf_model.pkl',
-      '2.2.8_recommendations.csv',
-      '2.2.8_performance_report.txt',
-      '2.2.8_user_analysis.txt'
-    ]
-  }
-])
+// 接口数据
+const examData = ref(null)
+const studentData = ref(null)
 
 // 计算当前题目数据
 const currentQuestionData = computed(() => {
-  return questions.value.find(q => q.id === currentQuestion.value) || questions.value[0]
+  if (!examData.value?.questions) return null
+  return examData.value.questions.find(q => q.order === currentQuestion.value) || examData.value.questions[0]
 })
 
-
-
-const fileSizes = ref({
-  0: '0KB',
-  1: '0KB',
-  2: '0KB',
-  3: '0KB',
-  4: '0KB',
-  5: '0KB'
-})
-
-const fileStatuses = ref({
-  0: 'not-uploaded',
-  1: 'not-uploaded',
-  2: 'not-uploaded',
-  3: 'not-uploaded',
-  4: 'not-uploaded',
-  5: 'not-uploaded'
+// 计算当前题目的required_files
+const currentQuestionRequiredFiles = computed(() => {
+  if (!currentQuestionData.value?.required_files) return []
+  
+  try {
+    const requiredFiles = JSON.parse(currentQuestionData.value.required_files)
+    return Array.isArray(requiredFiles) ? requiredFiles : []
+  } catch (e) {
+    console.error('解析required_files失败:', e)
+    return []
+  }
 })
 
 // 下载文件列表
@@ -341,16 +212,47 @@ const downloadFiles = ref([
   { name: 'fitness analysis.csv', url: '#' }
 ])
 
+// 加载考试数据
+const loadExamData = async () => {
+  try {
+    // 从localStorage获取考试数据
+    const examQuestionsData = localStorage.getItem('examQuestions')
+    if (examQuestionsData) {
+      const data = JSON.parse(examQuestionsData)
+      examData.value = data
+      
+      // 设置当前题目为第一题
+      if (data.questions && data.questions.length > 0) {
+        currentQuestion.value = data.questions[0].order
+      }
+    }
+
+    // 从localStorage获取学生数据
+    const studentDataStr = localStorage.getItem('studentData')
+    if (studentDataStr) {
+      studentData.value = JSON.parse(studentDataStr)
+    }
+  } catch (error) {
+    console.error('加载考试数据失败:', error)
+  }
+}
+
 // 导航方法
 const goToPreviousQuestion = () => {
-  if (currentQuestion.value > 1) {
-    currentQuestion.value--
+  if (!examData.value?.questions) return
+  
+  const currentIndex = examData.value.questions.findIndex(q => q.order === currentQuestion.value)
+  if (currentIndex > 0) {
+    currentQuestion.value = examData.value.questions[currentIndex - 1].order
   }
 }
 
 const goToNextQuestion = () => {
-  if (currentQuestion.value < 6) {
-    currentQuestion.value++
+  if (!examData.value?.questions) return
+  
+  const currentIndex = examData.value.questions.findIndex(q => q.order === currentQuestion.value)
+  if (currentIndex < examData.value.questions.length - 1) {
+    currentQuestion.value = examData.value.questions[currentIndex + 1].order
   }
 }
 
@@ -408,9 +310,10 @@ const startTimer = () => {
   }, 1000)
 }
 
-// 组件挂载时开始倒计时
+// 组件挂载时开始倒计时和加载数据
 onMounted(() => {
   startTimer()
+  loadExamData()
 })
 
 // 组件卸载时清理定时器
