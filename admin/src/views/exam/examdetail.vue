@@ -5,6 +5,7 @@
       <div class="header-content">
         <div class="header-left">
           <h1 class="exam-title">考试详情</h1>
+          <h2>{{ exam_name}}</h2>
           <div class="student-basic-info">
             <div class="info-item">
               <span class="label">学生姓名：</span>
@@ -23,18 +24,7 @@
             </div>
           </div>
         </div>
-        <div class="header-right">
-          <div class="exam-time-info">
-            <div class="time-item">
-              <span class="label">开始时间：</span>
-              <span class="value">{{ formatDateTime(student_exam.start_time) }}</span>
-            </div>
-            <div class="time-item">
-              <span class="label">结束时间：</span>
-              <span class="value">{{ formatDateTime(student_exam.end_time) }}</span>
-            </div>
-          </div>
-        </div>
+  
       </div>
     </div>
 
@@ -89,7 +79,7 @@
                     <div 
                       v-for="(option, optionIndex) in subQuestion.options" 
                       :key="option.uuid"
-                      :class="['option-item', { 'selected': isOptionSelected(question, subIndex, optionIndex), 'correct': option.is_correct }]"
+                      :class="['option-item', { 'selected': isOptionSelected(question, subIndex, optionIndex) }]"
                     >
                       <span class="option-text">{{ option.content }}</span>
                       <div class="option-status">
@@ -234,6 +224,7 @@ export default {
       student_exam:{},
       studentInfo: {},
       exam_id: null,
+      exam_name: null,
       student_id: null
     }
   },
@@ -248,12 +239,10 @@ export default {
       // 从路由参数获取学生信息
       this.studentInfo = {
         name: this.$route.query.studentName || '未知',
-        phone: this.$route.query.studentPhone || '未知',
-        exam_number: this.$route.query.examNumber || '未知',
-        status: this.$route.query.status || 'unknown',
-        start_time: this.$route.query.startTime || null,
-        end_time: this.$route.query.endTime || null
+        phone: this.$route.query.studentPhone || '未知'
       }
+      this.exam_name=this.$route.query.exam_name || '未知',
+      
       
       fetchStudentExamResult(this.exam_id, this.student_id)
         .then(res => {

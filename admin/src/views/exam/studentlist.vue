@@ -177,7 +177,7 @@ export default {
       // 跳转到学生考试详情页面
       this.$router.push({
         path: `/exam/examdetail/${this.exam_id}/${row.id}`,
-        query: { exam_name: this.examName }
+        query: { exam_name: this.examName,studentName:row.name,studentPhone:row.phone }
       })
     },
     beforeImportUpload(file) {
