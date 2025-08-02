@@ -53,27 +53,32 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
+    
+    # 确保sub字段是字符串类型
+    if "sub" in to_encode and not isinstance(to_encode["sub"], str):
+        to_encode["sub"] = str(to_encode["sub"])
+    
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 # 获取用户信息
-def getUser(id: str, db: Session = Depends(get_db)):
+def getUser(id: str, db: Session):
      if id is None:
         return None
      user = db.query(Student).filter(Student.id == id).first()
      return user
 
 # 获取用户信息
-def getUserById(id: int, db: Session = Depends(get_db)):
+def getUserById(id: int, db: Session):
      if id is None:
         return None
      user = db.query(Student).filter(Student.id == id).first()
      return user
 
-def checkToken(token: str ):
+def checkToken(token: str, db: Session):
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     id = payload.get("sub")
-    user = getUser(id)
+    user = getUser(id, db)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -82,10 +87,10 @@ def checkToken(token: str ):
         )
     return user
 
-def checkUserToken(token: str ):
+def checkUserToken(token: str, db: Session):
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     id = payload.get("sub")
-    user = getUser(id)
+    user = getUser(id, db)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -94,7 +99,7 @@ def checkUserToken(token: str ):
         )
     return user
 
-def checkEdit(token: str,userId:int):
+def checkEdit(token: str, userId: int, db: Session):
     id=0
     try:
         if token.startswith('Bearer '):
@@ -120,14 +125,14 @@ def checkEdit(token: str,userId:int):
             headers={"WWW-Authenticate": "Bearer"},
         )
   
-    user = getUser(id)
+    user = getUser(id, db)
     if user is None:
        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication",
             headers={"WWW-Authenticate": "Bearer"},
         )
-def checkUserAndAdmin(token: str):
+def checkUserAndAdmin(token: str, db: Session):
     id=0
     try:
     # 尝试执行的代码
@@ -142,7 +147,7 @@ def checkUserAndAdmin(token: str):
     if id==0:
         admin.checkToken(token)
         return
-    user = getUser(id)
+    user = getUser(id, db)
     if user is None:
        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

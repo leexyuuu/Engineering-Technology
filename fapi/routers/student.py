@@ -545,7 +545,7 @@ def get_exam_result(
     db: Session = Depends(get_db)
 ):
   
-    checkEdit(token,student_id)
+    checkEdit(token, student_id, db)
     # 获取学生考试记录
     student_exam = db.query(StudentExam).filter(
         StudentExam.student_id == student_id,

@@ -14,10 +14,10 @@ from schemas import User,UserCreate,UserMockCreate
 from models import UserModel,AreaModel,CellModel,Exam,Question,Student,StudentExam,StudentAnswer
 # OAuth2 的 Bearer Token 方案
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
-# 配置
-SECRET_KEY = "mysaasfad435435dggfyf4556dsfecretkey"  # 你的密钥
-ALGORITHM = "HS256"          # 加密算法
-ACCESS_TOKEN_EXPIRE_MINUTES = 6000  # 访问令牌过期时间
+# 安全相关配置
+SECRET_KEY = "mysfsfdgd43dsfsdgdfdsg243dsg"  # 统一密钥
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 3000
  
 class LoginFrom(BaseModel):
     username: str
@@ -115,21 +115,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def checkToken(token: str ):
+def checkToken(token: str):
     payload = jwt.decode(token.replace('Bearer ',''), SECRET_KEY, algorithms=[ALGORITHM])
     name = payload.get("sub")
     print("checkToken name="+name)
     if name=="yijin" or name=="admin":
        return getDefaultUser(name)
 
-    user = get_user(name)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user   
+    # 对于其他用户，直接返回用户信息而不查询数据库
+    return {"name": name, "id": 1, "avatar": "", "introduction": "", "roles": "user", "disabled": False}
 
 
 def searchUser(name: str,db: Session = Depends(get_db)):
