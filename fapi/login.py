@@ -97,9 +97,12 @@ def checkUserToken(token: str ):
 def checkEdit(token: str,userId:int):
     id=0
     try:
+        if token.startswith('Bearer '):
+            token = token.replace('Bearer ', '')
+
     # 尝试执行的代码
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        id = payload.get("sub")
+        id = int(payload.get("sub"))
     except Exception as e:  # 捕获其他所有异常类型
         # 当其他异常发生时执行的代码
         print(f"发生了一个异常: {e}")
@@ -110,7 +113,7 @@ def checkEdit(token: str,userId:int):
         admin.checkToken(token)
         return
     
-    if id!=userId:
+    if str(id)!=str(userId):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication",
