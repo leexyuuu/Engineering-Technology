@@ -18,21 +18,12 @@ from jose import JWTError, jwt
 import shutil
 from fastapi.responses import JSONResponse
 
-# 安全相关配置
-SECRET_KEY = "mysaasfad435435dggfyf4556dsfecretkey"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 3000
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # 文件上传配置
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# 密码哈希函数
-def get_password_hash(password: str):
-    return pwd_context.hash(password)
+
 
 
 @app.middleware("http")
