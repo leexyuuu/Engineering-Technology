@@ -15,19 +15,14 @@ from fastapi.exceptions import RequestValidationError
 import os
 import uuid
 import json
-from login import checkUserToken,checkEdit
+from login import checkUserToken,checkEdit,create_access_token
 from admin import checkToken
 from jose import JWTError, jwt
 import shutil
 from fastapi.responses import JSONResponse
 
-# 安全相关配置
-SECRET_KEY = "mysaasfad435435dggfyf4556dsfecretkey"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 3000
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # 文件上传配置
 UPLOAD_FOLDER = "uploads"
@@ -144,15 +139,7 @@ def create_student(student: StudentCreate, db: Session = Depends(get_db)):
     return {"code":20000,"data":db_student,"token": token}
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+
 
 async def get_current_student(token: str = Header(..., alias="Authorization")):
     return checkUserToken(token)
