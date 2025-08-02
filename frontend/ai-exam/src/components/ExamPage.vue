@@ -31,31 +31,6 @@
         <!-- 题目内容 -->
         <div class="question-content">
           <h2 class="exam-title">{{ currentQuestionData?.content || '加载中...' }}</h2>
-          
-          <div class="question-info">
-            <div class="info-item">
-              <span class="label">试题代码:</span>
-              <span class="value">{{ currentQuestionData?.uuid || 'N/A' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">试题名称:</span>
-              <span class="value">{{ examData?.exam?.name || 'N/A' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">考试时间:</span>
-              <span class="value">{{ examData?.exam?.duration_minutes || 'N/A' }}分钟</span>
-            </div>
-          </div>
-
-          <div v-if="currentQuestionData?.file_description" class="requirements">
-            <h3>文件要求:</h3>
-            <p>{{ currentQuestionData.file_description }}</p>
-          </div>
-
-          <div v-if="currentQuestionData?.sub_questions_str" class="work-content">
-            <h3>子题目:</h3>
-            <p>{{ currentQuestionData.sub_questions_str }}</p>
-          </div>
         </div>
       </div>
 
@@ -188,8 +163,18 @@ const studentData = ref(null)
 
 // 计算当前题目数据
 const currentQuestionData = computed(() => {
-  if (!examData.value?.questions) return null
-  return examData.value.questions.find(q => q.order === currentQuestion.value) || examData.value.questions[0]
+  if (!examData.value?.questions) {
+    return null
+  }
+  
+  const found = examData.value.questions.find(q => q.order === currentQuestion.value)
+  
+  if (!found) {
+    const firstQuestion = examData.value.questions[0]
+    return firstQuestion
+  }
+  
+  return found
 })
 
 // 计算当前题目的required_files
@@ -217,6 +202,7 @@ const loadExamData = async () => {
   try {
     // 从localStorage获取考试数据
     const examQuestionsData = localStorage.getItem('examQuestions')
+    
     if (examQuestionsData) {
       const data = JSON.parse(examQuestionsData)
       examData.value = data
@@ -229,6 +215,7 @@ const loadExamData = async () => {
 
     // 从localStorage获取学生数据
     const studentDataStr = localStorage.getItem('studentData')
+    
     if (studentDataStr) {
       studentData.value = JSON.parse(studentDataStr)
     }
