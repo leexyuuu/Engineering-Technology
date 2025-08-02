@@ -225,8 +225,10 @@ class StudentAnswer(Base):
     student_exam_id = Column(Integer, ForeignKey("student_exams.id"), nullable=False)
     answer_text = Column(Text)  # 用于填空题
     question_id=Column(Integer, ForeignKey("questions.id"), nullable=False)
-    file_url = Column(String(255))  # 文件题的文件URL
+    file_url = Column(String(255))  # 文件题的文件URL（向后兼容）
     option_answers = Column(Text().with_variant(Text(4294967295), 'mysql')) 
+    # 多文件答题相关字段
+    file_answers = Column(Text().with_variant(Text(4294967295), 'mysql'))  # JSON格式存储多个文件答案
     
     student_exam = relationship("StudentExam", back_populates="answers")
 

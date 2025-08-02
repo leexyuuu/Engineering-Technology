@@ -286,17 +286,33 @@ export default {
     // 获取学生为特定required_file上传的文件
     getStudentFileForRequiredFile(question, requiredFileUuid) {
       const studentAnswer = this.getStudentAnswer(question)
-      if (!studentAnswer || !studentAnswer.option_answers) return null
+      if (!studentAnswer) return null
       
-      try {
-        const fileAnswers = JSON.parse(studentAnswer.option_answers)
-        if (fileAnswers && fileAnswers[requiredFileUuid]) {
-          return fileAnswers[requiredFileUuid]
+      // 优先使用file_answers字段（多文件答题）
+      if (studentAnswer.file_answers) {
+        try {
+          const fileAnswers = JSON.parse(studentAnswer.file_answers)
+          if (fileAnswers && fileAnswers[requiredFileUuid]) {
+            return fileAnswers[requiredFileUuid]
+          }
+        } catch (e) {
+          console.error('解析file_answers失败:', e)
         }
-        return null
-      } catch (e) {
-        return null
       }
+      
+      // 向后兼容：使用option_answers字段
+      if (studentAnswer.option_answers) {
+        try {
+          const fileAnswers = JSON.parse(studentAnswer.option_answers)
+          if (fileAnswers && fileAnswers[requiredFileUuid]) {
+            return fileAnswers[requiredFileUuid]
+          }
+        } catch (e) {
+          console.error('解析option_answers失败:', e)
+        }
+      }
+      
+      return null
     },
     // 检查选项是否被选中
     isOptionSelected(question, subIndex, optionIndex) {

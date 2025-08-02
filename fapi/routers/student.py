@@ -76,6 +76,11 @@ class AnswerSubmit(BaseModel):
     exam_id: int
     option_answers: Optional[str] = None
 
+class FileAnswerSubmit(BaseModel):
+    question_id: int
+    exam_id: int
+    required_file_uuid: str  # 对应required_files中的uuid
+
 
 
 @app.exception_handler(RequestValidationError)
@@ -453,6 +458,7 @@ async def upload_answer(
 async def upload_answer_file(
     question_id: int,
     exam_id: int,
+    required_file_uuid: str = Form(...),  # 对应required_files中的uuid
     file: UploadFile = File(...),
     current_student: Student = Depends(get_current_student),
     db: Session = Depends(get_db)
@@ -467,20 +473,30 @@ async def upload_answer_file(
     if not student_exam:
         raise HTTPException(status_code=403, detail="You are not allowed to submit answers for this exam")
     
-    # 检查问题和子问题是否存在
+    # 检查问题是否存在
     question = db.query(Question).filter(
         Question.id == question_id,
-        Question.exam_id == exam_id,
-        Question.requires_file == True
+        Question.exam_id == exam_id
     ).first()
     
     if not question:
-        raise HTTPException(status_code=404, detail="File upload not allowed for this question or question not found")
+        raise HTTPException(status_code=404, detail="Question not found")
     
+    # 检查是否为多文件题
+    if question.required_files:
+        try:
+            required_files = json.loads(question.required_files)
+            # 验证required_file_uuid是否在required_files中
+            if not any(req_file.get('uuid') == required_file_uuid for req_file in required_files):
+                raise HTTPException(status_code=400, detail="Invalid required_file_uuid")
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid required_files format")
+    elif not question.requires_file:
+        raise HTTPException(status_code=404, detail="File upload not allowed for this question")
     
     # 保存文件
     file_ext = os.path.splitext(file.filename)[1]
-    filename = f"{current_student.id}_{question_id}_{uuid.uuid4()}{file_ext}"
+    filename = f"{current_student.id}_{question_id}_{required_file_uuid}_{uuid.uuid4()}{file_ext}"
     file_path = os.path.join(UPLOAD_FOLDER, filename)
     
     with open(file_path, "wb") as buffer:
@@ -495,23 +511,41 @@ async def upload_answer_file(
     ).first()
     
     if existing_answer:
-        # 删除旧文件
-        if existing_answer.file_url:
-            old_file_path = os.path.join(UPLOAD_FOLDER, existing_answer.file_url.split("/")[-1])
+        # 获取现有的file_answers
+        file_answers = {}
+        if existing_answer.file_answers:
+            try:
+                file_answers = json.loads(existing_answer.file_answers)
+            except json.JSONDecodeError:
+                file_answers = {}
+        
+        # 删除旧文件（如果存在）
+        if required_file_uuid in file_answers:
+            old_file_path = os.path.join(UPLOAD_FOLDER, file_answers[required_file_uuid].split("/")[-1])
             if os.path.exists(old_file_path):
                 os.remove(old_file_path)
-        existing_answer.file_url = file_url
+        
+        # 更新文件答案
+        file_answers[required_file_uuid] = file_url
+        existing_answer.file_answers = json.dumps(file_answers)
+        
+        # 如果是单文件题，也更新file_url（向后兼容）
+        if question.requires_file and not question.required_files:
+            existing_answer.file_url = file_url
     else:
+        # 创建新的答案记录
+        file_answers = {required_file_uuid: file_url}
         db_answer = StudentAnswer(
             student_exam_id=student_exam.id,
             question_id=question_id,
-            file_url=file_url
+            file_url=file_url if question.requires_file and not question.required_files else None,
+            file_answers=json.dumps(file_answers) if question.required_files else None
         )
         db.add(db_answer)
     
     db.commit()
     
-    return {"code":20000,"file_url": file_url}
+    return {"code": 20000, "data": {"file_url": file_url}}
 
 
 
@@ -567,8 +601,8 @@ def get_exam_result(
             "student_answer": {
                 "id": student_answer.id if student_answer else None,
                 "answer_text": student_answer.answer_text if student_answer else None,
-                "file_url": student_answer.file_url if student_answer else None,
-                "option_answers": student_answer.option_answers if student_answer else None
+                "option_answers": student_answer.option_answers if student_answer else None,
+                "file_answers": student_answer.file_answers if student_answer else None
             } if student_answer else None
         }
         results.append(question_data)
