@@ -141,8 +141,8 @@ def create_student(student: StudentCreate, db: Session = Depends(get_db)):
 
 
 
-async def get_current_student(token: str = Header(..., alias="Authorization")):
-    return checkUserToken(token)
+async def get_current_student(token: str = Header(..., alias="Authorization"), db: Session = Depends(get_db)):
+    return checkUserToken(token, db)
     
 
 def check_exam_time(exam: Exam):
@@ -443,8 +443,8 @@ async def upload_answer(
 
 @app.post("/student/answers/file")
 async def upload_answer_file(
-    question_id: int,
-    exam_id: int,
+    question_id: int = Form(...),
+    exam_id: int = Form(...),
     required_file_uuid: str = Form(...),  # 对应required_files中的uuid
     file: UploadFile = File(...),
     current_student: Student = Depends(get_current_student),

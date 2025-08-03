@@ -65,7 +65,8 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
 def getUser(id: str, db: Session):
      if id is None:
         return None
-     user = db.query(Student).filter(Student.id == id).first()
+     # 确保id是字符串类型
+     user = db.query(Student).filter(Student.id == int(id)).first()
      return user
 
 # 获取用户信息
@@ -88,6 +89,10 @@ def checkToken(token: str, db: Session):
     return user
 
 def checkUserToken(token: str, db: Session):
+    # 处理Bearer前缀
+    if token.startswith('Bearer '):
+        token = token.replace('Bearer ', '')
+    
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     id = payload.get("sub")
     user = getUser(id, db)

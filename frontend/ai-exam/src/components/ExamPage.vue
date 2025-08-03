@@ -75,11 +75,33 @@
                   <td>{{ index + 1 }}</td>
                   <td>{{ file.description || `上传文件 ${index + 1}` }}</td>
                   <td>
-                    <input type="file" :id="'file-' + index" style="display: none;" />
+                    <input 
+                      type="file" 
+                      :id="'file-' + index" 
+                      style="display: none;" 
+                      @change="onFileSelected($event, index)"
+                    />
                     <label :for="'file-' + index" class="file-input-label">选择文件</label>
+                    <div v-if="selectedFiles[index]" class="selected-file">
+                      📎 {{ selectedFiles[index].name }}
+                    </div>
                   </td>
                   <td>
-                    <button class="upload-btn">上传答案{{ index + 1 }}</button>
+                    <button 
+                      class="upload-btn" 
+                      @click="uploadAnswerFile(index)"
+                      :disabled="!selectedFiles[index] || uploadStatus[index] === 'uploading'"
+                      :class="{
+                        'uploading': uploadStatus[index] === 'uploading',
+                        'success': uploadStatus[index] === 'success',
+                        'error': uploadStatus[index] === 'error'
+                      }"
+                    >
+                      <span v-if="uploadStatus[index] === 'uploading'">上传中...</span>
+                      <span v-else-if="uploadStatus[index] === 'success'">✅ 已上传</span>
+                      <span v-else-if="uploadStatus[index] === 'error'">❌ 重试</span>
+                      <span v-else>上传答案{{ index + 1 }}</span>
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -197,6 +219,10 @@ const downloadFiles = ref([
   { name: 'fitness analysis.csv', url: '#' }
 ])
 
+// 文件上传状态
+const selectedFiles = ref([])
+const uploadStatus = ref({}) // 记录每个文件的上传状态
+
 // 加载考试数据
 const loadExamData = async () => {
   try {
@@ -281,6 +307,83 @@ const downloadFile = (file) => {
   
   // 显示下载提示
   alert(`文件 ${file.name} 开始下载`)
+}
+
+// 文件选择事件
+const onFileSelected = (event, index) => {
+  const file = event.target.files[0]
+  if (file) {
+    selectedFiles.value[index] = file
+    uploadStatus.value[index] = 'ready' // 准备上传
+  } else {
+    selectedFiles.value[index] = null
+    uploadStatus.value[index] = null
+  }
+}
+
+// 上传答案文件
+const uploadAnswerFile = async (index) => {
+  const file = selectedFiles.value[index]
+  if (!file) {
+    alert('请选择要上传的文件！')
+    return
+  }
+
+  // 获取当前题目的required_files信息
+  const currentRequiredFiles = currentQuestionRequiredFiles.value
+  const targetFile = currentRequiredFiles[index]
+  
+  if (!targetFile || !targetFile.uuid) {
+    alert('文件配置信息错误！')
+    return
+  }
+
+  // 设置上传状态
+  uploadStatus.value[index] = 'uploading'
+
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('question_id', currentQuestionData.value.id)
+  formData.append('exam_id', examData.value.exam.id)
+  formData.append('required_file_uuid', targetFile.uuid)
+
+  try {
+    // 获取学生token
+    const token = localStorage.getItem('studentToken')
+    if (!token) {
+      alert('登录信息已过期，请重新登录！')
+      router.push('/')
+      return
+    }
+
+    const response = await fetch('http://localhost:8000/student/answers/file', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    })
+
+    const result = await response.json()
+
+    if (response.ok && result.code === 20000) {
+      uploadStatus.value[index] = 'success'
+      alert(`文件 ${file.name} 上传成功！`)
+      selectedFiles.value[index] = null // 清空已上传的文件
+      // 清空文件输入框
+      const fileInput = document.getElementById(`file-${index}`)
+      if (fileInput) {
+        fileInput.value = ''
+      }
+    } else {
+      uploadStatus.value[index] = 'error'
+      alert(`文件 ${file.name} 上传失败: ${result.message || '未知错误'}`)
+    }
+  } catch (error) {
+    uploadStatus.value[index] = 'error'
+    console.error('上传文件失败:', error)
+    alert('上传文件失败，请稍后再试。')
+  }
 }
 
 // 开始倒计时
@@ -659,6 +762,24 @@ onUnmounted(() => {
   background: #E62A4A;
 }
 
+.upload-btn.uploading {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.upload-btn.success {
+  background: #28a745;
+}
+
+.upload-btn.error {
+  background: #dc3545;
+}
+
+.upload-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
 .upload-arrow-btn {
   padding: 4px 8px;
   background: #6c757d;
@@ -843,5 +964,17 @@ onUnmounted(() => {
   color: #6c757d;
 }
 
+.selected-file {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.selected-file .file-icon {
+  font-size: 14px;
+}
 
 </style> 
