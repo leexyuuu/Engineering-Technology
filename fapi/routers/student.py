@@ -399,7 +399,7 @@ async def read_students_me(current_student: Student = Depends(get_current_studen
 
 @app.post("/student/answers/save")
 async def upload_answer(
-    item:AnswerSubmit =Depends(),
+    item: AnswerSubmit,
     current_student: Student = Depends(get_current_student),
     db: Session = Depends(get_db)
 ):

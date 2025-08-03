@@ -25,12 +25,31 @@
             @click="currentQuestion = question.order"
           >
             第{{ question.order }}题
+            <span v-if="answerStatus[question.id]" class="answer-status">
+              {{ 
+                answerStatus[question.id] === 'answered' ? '✅' : 
+                answerStatus[question.id] === 'in_progress' ? '🔄' : '⭕' 
+              }}
+            </span>
           </button>
         </div>
 
         <!-- 题目内容 -->
         <div class="question-content">
           <h2 class="exam-title">{{ currentQuestionData?.content || '加载中...' }}</h2>
+          
+          <!-- 文件上传进度 -->
+          <div v-if="currentQuestionRequiredFiles.length > 0" class="upload-progress">
+            <div class="progress-info">
+              文件上传进度: {{ uploadedFilesCount }}/{{ currentQuestionRequiredFiles.length }}
+            </div>
+            <div class="progress-bar">
+              <div 
+                class="progress-fill" 
+                :style="{ width: `${(uploadedFilesCount / currentQuestionRequiredFiles.length) * 100}%` }"
+              ></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -183,6 +202,11 @@ let timer = null
 const examData = ref(null)
 const studentData = ref(null)
 
+// 答案状态管理
+const answerStatus = ref({}) // 记录每个题目的答题状态
+const currentAnswerStatus = ref('not_answered') // 当前题目的答题状态
+const uploadedFilesCount = ref(0) // 当前题目已上传的文件数量
+
 // 计算当前题目数据
 const currentQuestionData = computed(() => {
   if (!examData.value?.questions) {
@@ -210,6 +234,12 @@ const currentQuestionRequiredFiles = computed(() => {
     console.error('解析required_files失败:', e)
     return []
   }
+})
+
+// 检查当前题目是否所有文件都已上传
+const isCurrentQuestionComplete = computed(() => {
+  const requiredCount = currentQuestionRequiredFiles.value.length
+  return uploadedFilesCount.value >= requiredCount
 })
 
 // 下载文件列表
@@ -251,34 +281,104 @@ const loadExamData = async () => {
 }
 
 // 导航方法
-const goToPreviousQuestion = () => {
+const goToPreviousQuestion = async () => {
   if (!examData.value?.questions) return
+  
+  // 保存当前题目的答题状态
+  await saveCurrentAnswerStatus()
   
   const currentIndex = examData.value.questions.findIndex(q => q.order === currentQuestion.value)
   if (currentIndex > 0) {
     currentQuestion.value = examData.value.questions[currentIndex - 1].order
+    // 重置当前题目的答题状态和上传计数
+    const prevQuestion = examData.value.questions[currentIndex - 1]
+    currentAnswerStatus.value = answerStatus.value[prevQuestion.id] || 'not_answered'
+    uploadedFilesCount.value = 0 // 重置上传计数
+    selectedFiles.value = {} // 重置选择的文件
   }
 }
 
-const goToNextQuestion = () => {
+const goToNextQuestion = async () => {
   if (!examData.value?.questions) return
+  
+  // 保存当前题目的答题状态
+  await saveCurrentAnswerStatus()
   
   const currentIndex = examData.value.questions.findIndex(q => q.order === currentQuestion.value)
   if (currentIndex < examData.value.questions.length - 1) {
     currentQuestion.value = examData.value.questions[currentIndex + 1].order
+    // 重置当前题目的答题状态和上传计数
+    const nextQuestion = examData.value.questions[currentIndex + 1]
+    currentAnswerStatus.value = answerStatus.value[nextQuestion.id] || 'not_answered'
+    uploadedFilesCount.value = 0 // 重置上传计数
+    selectedFiles.value = {} // 重置选择的文件
   }
 }
 
-const submitExam = () => {
-  // 这里可以添加交卷逻辑
+const submitExam = async () => {
   if (confirm('确定要交卷吗？交卷后将无法修改答案。')) {
-    alert('考试完成！感谢您的参与。')
-    // 停止倒计时
-    if (timer) {
-      clearInterval(timer)
+    try {
+      const token = localStorage.getItem('studentToken')
+      if (!token) {
+        alert('登录信息已过期，请重新登录！')
+        router.push('/')
+        return
+      }
+
+      // 获取考试数据
+      const examQuestionsData = localStorage.getItem('examQuestions')
+      if (!examQuestionsData) {
+        alert('考试数据不存在，请重新登录！')
+        router.push('/')
+        return
+      }
+
+      const examData = JSON.parse(examQuestionsData)
+      const examId = examData.exam.id
+
+      // 调用交卷接口
+      const response = await fetch(`http://localhost:8000/student/exams/${examId}/submit`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const result = await response.json()
+      
+      if (response.ok && result.code === 20000) {
+        alert('考试完成！感谢您的参与。')
+        // 停止倒计时
+        if (timer) {
+          clearInterval(timer)
+        }
+        // 清除本地存储的考试数据
+        localStorage.removeItem('examQuestions')
+        localStorage.removeItem('studentData')
+        // 跳转回登录页面
+        router.push('/')
+      } else {
+        // 处理不同的错误情况
+        let errorMessage = '交卷失败'
+        if (result.code === 404) {
+          if (result.message === '没有开始考试') {
+            errorMessage = '您还没有开始这场考试'
+          } else if (result.message === '考试不存在') {
+            errorMessage = '考试不存在'
+          }
+        } else if (result.code === 400) {
+          if (result.message === '考试已经截止了') {
+            errorMessage = '考试已经截止了'
+          }
+        } else {
+          errorMessage = result.message || '未知错误'
+        }
+        alert(`交卷失败: ${errorMessage}`)
+      }
+    } catch (error) {
+      console.error('交卷请求失败:', error)
+      alert('交卷失败，请检查网络连接后重试。')
     }
-    // 跳转回登录页面
-    router.push('/')
   }
 }
 
@@ -314,10 +414,66 @@ const onFileSelected = (event, index) => {
   const file = event.target.files[0]
   if (file) {
     selectedFiles.value[index] = file
-    uploadStatus.value[index] = 'ready' // 准备上传
+    uploadStatus.value[index] = 'ready'
+    // 更新答题状态为"进行中"
+    currentAnswerStatus.value = 'in_progress'
   } else {
     selectedFiles.value[index] = null
     uploadStatus.value[index] = null
+  }
+}
+
+// 保存当前题目的答题状态
+const saveCurrentAnswerStatus = async () => {
+  if (!currentQuestionData.value) return
+  
+  // 检查是否有任何操作（选择文件或上传文件）
+  const hasAnyOperation = uploadedFilesCount.value > 0 || 
+                         Object.keys(selectedFiles.value).some(key => selectedFiles.value[key])
+  
+  if (!hasAnyOperation) {
+    console.log('当前题目无操作，跳过保存')
+    return
+  }
+  
+  try {
+    const token = localStorage.getItem('studentToken')
+    if (!token) {
+      console.error('未找到登录token')
+      return
+    }
+
+    const response = await fetch('http://localhost:8000/student/answers/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        question_id: currentQuestionData.value.id,
+        exam_id: examData.value.exam.id,
+        option_answers: JSON.stringify({
+          question_type: 'file_upload',
+          answer_status: currentAnswerStatus.value,
+          required_files_count: currentQuestionRequiredFiles.value.length,
+          uploaded_files_count: uploadedFilesCount.value,
+          selected_files_count: Object.keys(selectedFiles.value).filter(key => selectedFiles.value[key]).length,
+          timestamp: new Date().toISOString()
+        })
+      })
+    })
+
+    const result = await response.json()
+    
+    if (response.ok && result.code === 20000) {
+      console.log('答题状态保存成功')
+      // 更新全局答题状态
+      answerStatus.value[currentQuestionData.value.id] = currentAnswerStatus.value
+    } else {
+      console.error('保存答题状态失败:', result)
+    }
+  } catch (error) {
+    console.error('保存答题状态请求失败:', error)
   }
 }
 
@@ -374,6 +530,20 @@ const uploadAnswerFile = async (index) => {
       const fileInput = document.getElementById(`file-${index}`)
       if (fileInput) {
         fileInput.value = ''
+      }
+      
+      // 增加已上传文件计数
+      uploadedFilesCount.value++
+      
+      // 检查是否所有文件都已上传完成
+      if (isCurrentQuestionComplete.value) {
+        // 所有文件上传完成，更新答题状态
+        currentAnswerStatus.value = 'answered'
+        // 保存答题状态到后端
+        await saveCurrentAnswerStatus()
+        console.log('所有文件上传完成，答题状态已保存')
+      } else {
+        console.log(`已上传 ${uploadedFilesCount.value}/${currentQuestionRequiredFiles.value.length} 个文件`)
       }
     } else {
       uploadStatus.value[index] = 'error'
@@ -520,6 +690,38 @@ onUnmounted(() => {
   color: #FF3355;
   border-bottom-color: #FF3355;
   background: white;
+}
+
+.answer-status {
+  margin-left: 4px;
+  font-size: 12px;
+}
+
+.upload-progress {
+  margin: 15px 0;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.progress-info {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #FF3355;
+  transition: width 0.3s ease;
 }
 
 .question-content {
