@@ -65,13 +65,7 @@
           {{ errorMessage }}
         </div>
 
-        <!-- 注册入口 -->
-        <div class="register-section">
-          <span class="register-text">还没有账号？</span>
-          <button @click="goToRegister" class="register-link">
-            立即注册
-          </button>
-        </div>
+        <!-- 移除注册入口 -->
       </div>
     </div>
   </div>
@@ -92,9 +86,7 @@ const togglePassword = () => {
   showPassword.value = !showPassword.value
 }
 
-const goToRegister = () => {
-  router.push('/register')
-}
+// 移除goToRegister函数
 
 const handleLogin = async () => {
   if (!username.value || !password.value) {
@@ -355,34 +347,7 @@ const handleLogin = async () => {
   text-align: center;
 }
 
-.register-section {
-  margin-top: 24px;
-  text-align: center;
-  padding-top: 20px;
-  border-top: 1px solid #e1e5e9;
-}
-
-.register-text {
-  color: #666;
-  font-size: 14px;
-  margin-right: 8px;
-}
-
-.register-link {
-  background: none;
-  border: none;
-  color: #FF3355;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
-  margin: 0;
-}
-
-.register-link:hover {
-  color: #E62A4A;
-}
+/* 移除注册相关样式 */
 
 /* 响应式设计 */
 @media (max-width: 768px) {
