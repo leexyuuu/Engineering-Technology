@@ -34,22 +34,10 @@
           </button>
         </div>
 
-        <!-- 题目内容 -->
+        <!-- 题目内容 - 支持富文本展示 -->
         <div class="question-content">
-          <h2 class="exam-title">{{ currentQuestionData?.content || '加载中...' }}</h2>
-          
-          <!-- 文件上传进度 -->
-          <div v-if="currentQuestionRequiredFiles.length > 0" class="upload-progress">
-            <div class="progress-info">
-              文件上传进度: {{ uploadedFilesCount }}/{{ currentQuestionRequiredFiles.length }}
-            </div>
-            <div class="progress-bar">
-              <div 
-                class="progress-fill" 
-                :style="{ width: `${(uploadedFilesCount / currentQuestionRequiredFiles.length) * 100}%` }"
-              ></div>
-            </div>
-          </div>
+          <div v-if="currentQuestionData?.content" class="question-rich-content" v-html="renderedContent"></div>
+          <div v-else class="question-loading">加载中...</div>
         </div>
       </div>
 
@@ -125,6 +113,19 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- 文件上传进度 - 移动到表格下方 -->
+          <div v-if="currentQuestionRequiredFiles.length > 0" class="upload-progress">
+            <div class="progress-info">
+              文件上传进度: {{ uploadedFilesCount }}/{{ currentQuestionRequiredFiles.length }}
+            </div>
+            <div class="progress-bar">
+              <div 
+                class="progress-fill" 
+                :style="{ width: `${(uploadedFilesCount / currentQuestionRequiredFiles.length) * 100}%` }"
+              ></div>
+            </div>
           </div>
 
         </div>
@@ -206,6 +207,31 @@ const studentData = ref(null)
 const answerStatus = ref({}) // 记录每个题目的答题状态
 const currentAnswerStatus = ref('not_answered') // 当前题目的答题状态
 const uploadedFilesCount = ref(0) // 当前题目已上传的文件数量
+
+// Markdown渲染函数
+const renderMarkdown = (content) => {
+  if (!content) return ''
+  
+  // 先处理通用的加粗语法
+  let processedContent = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+  
+  // 然后处理其他格式
+  return processedContent
+    // 处理列表项
+    .replace(/^[-*]\s*(.*)$/gim, '<div class="list-item">- $1</div>')
+    // 处理普通段落
+    .replace(/^([^-*].*)$/gim, '<div class="paragraph">$1</div>')
+    // 清理空行
+    .replace(/\n\s*\n/g, '')
+    // 清理多余的div
+    .replace(/<div class="paragraph"><\/div>/g, '');
+}
+
+// 渲染后的内容
+const renderedContent = computed(() => {
+  if (!currentQuestionData.value?.content) return ''
+  return renderMarkdown(currentQuestionData.value.content)
+})
 
 // 计算当前题目数据
 const currentQuestionData = computed(() => {
@@ -729,6 +755,114 @@ onUnmounted(() => {
   padding: 20px;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+.question-rich-content {
+  line-height: 1.6;
+  color: #333;
+  font-size: 14px;
+}
+
+.question-rich-content .question-item {
+  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.question-rich-content .label {
+  font-weight: bold;
+  color: #333;
+  min-width: 80px;
+  margin-right: 8px;
+}
+
+.question-rich-content .value {
+  color: #666;
+  flex: 1;
+}
+
+.question-rich-content .list-item {
+  margin: 4px 0 4px 20px;
+  color: #666;
+}
+
+.question-rich-content .paragraph {
+  margin: 8px 0;
+  color: #666;
+  line-height: 1.6;
+}
+
+.question-rich-content h1 {
+  font-size: 24px;
+  font-weight: bold;
+  color: #FF3355;
+  margin: 0 0 16px 0;
+  border-bottom: 2px solid #FF3355;
+  padding-bottom: 8px;
+}
+
+.question-rich-content h2 {
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+  margin: 20px 0 12px 0;
+}
+
+.question-rich-content h3 {
+  font-size: 18px;
+  font-weight: bold;
+  color: #555;
+  margin: 16px 0 8px 0;
+}
+
+.question-rich-content p {
+  margin: 0 0 12px 0;
+  text-align: justify;
+}
+
+.question-rich-content strong {
+  font-weight: bold;
+  color: #FF3355;
+}
+
+.question-rich-content em {
+  font-style: italic;
+  color: #666;
+}
+
+.question-rich-content code {
+  background: #f4f4f4;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.question-rich-content pre {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 12px 0;
+  overflow-x: auto;
+}
+
+.question-rich-content pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.question-rich-content li {
+  margin: 4px 0;
+  padding-left: 8px;
+}
+
+.question-loading {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 40px 0;
 }
 
 .exam-title {

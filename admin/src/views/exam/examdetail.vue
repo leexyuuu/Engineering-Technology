@@ -5,7 +5,7 @@
       <div class="header-content">
         <div class="header-left">
           <h1 class="exam-title">考试详情</h1>
-          <h2>{{ exam_name}}</h2>
+          <h2>{{ exam_name }}</h2>
           <div class="student-basic-info">
             <div class="info-item">
               <span class="label">学生姓名：</span>
@@ -15,7 +15,7 @@
               <span class="label">手机号：</span>
               <span class="value">{{ studentInfo.phone }}</span>
             </div>
-          
+
             <div class="info-item">
               <span class="label">考试状态：</span>
               <el-tag :type="getStatusType(student_exam.status)" size="medium">
@@ -24,15 +24,15 @@
             </div>
           </div>
         </div>
-  
+
       </div>
     </div>
 
     <!-- 考试内容区域 -->
-    <div class="exam-content" v-loading="loading">
+    <div v-loading="loading" class="exam-content">
       <div class="questions-section">
-        <div 
-          v-for="(question, index) in examResults" 
+        <div
+          v-for="(question, index) in examResults"
           :key="question.id"
           class="question-block"
         >
@@ -51,7 +51,7 @@
               <h4>题目描述：</h4>
               <p>{{ question.content }}</p>
             </div>
-            
+
             <!-- 文件说明 -->
             <div v-if="question.requires_file && question.file_description" class="file-instruction">
               <h4>文件说明：</h4>
@@ -60,13 +60,13 @@
 
             <!-- 子问题列表 -->
             <div v-if="question.sub_questions_str" class="sub-questions-section">
-              <div 
-                v-for="(subQuestion, subIndex) in parseSubQuestions(question.sub_questions_str)" 
+              <div
+                v-for="(subQuestion, subIndex) in parseSubQuestions(question.sub_questions_str)"
                 :key="subQuestion.uuid"
                 class="sub-question-block"
               >
                 <div class="sub-question-title">
-                  <span class="sub-number">{{ subIndex+1}}.</span>
+                  <span class="sub-number">{{ subIndex+1 }}.</span>
                   <span class="sub-content">{{ subQuestion.content }}</span>
                   <span class="sub-score">({{ subQuestion.score }}分)</span>
                   <el-tag size="mini" type="success">{{ getSubQuestionType(subQuestion.question_type) }}</el-tag>
@@ -76,8 +76,8 @@
                 <div v-if="subQuestion.question_type === 'single_choice' || subQuestion.question_type === 'multiple_choice'" class="options-section">
                   <h5>选项：</h5>
                   <div class="options-list">
-                    <div 
-                      v-for="(option, optionIndex) in subQuestion.options" 
+                    <div
+                      v-for="(option, optionIndex) in subQuestion.options"
                       :key="option.uuid"
                       :class="['option-item', { 'selected': isOptionSelected(question, subIndex, optionIndex) }]"
                     >
@@ -109,8 +109,8 @@
             <div v-if="question.required_files" class="multi-file-answer-section">
               <h4>多文件答题要求：</h4>
               <div class="required-files-list">
-                <div 
-                  v-for="(requiredFile, fileIndex) in parseRequiredFiles(question.required_files)" 
+                <div
+                  v-for="(requiredFile, fileIndex) in parseRequiredFiles(question.required_files)"
                   :key="requiredFile.uuid"
                   class="required-file-item"
                 >
@@ -134,12 +134,12 @@
                     <div v-if="getStudentFileForRequiredFile(question, requiredFile.uuid)" class="file-display">
                       <div v-if="isImageFile(getStudentFileForRequiredFile(question, requiredFile.uuid))" class="image-file">
                         <div class="image-container">
-                          <img 
-                            :src="getStudentFileForRequiredFile(question, requiredFile.uuid)" 
-                            @click="previewImage(getStudentFileForRequiredFile(question, requiredFile.uuid))"
+                          <img
+                            :src="getStudentFileForRequiredFile(question, requiredFile.uuid)"
                             class="preview-image"
                             alt="学生上传的图片"
-                          />
+                            @click="previewImage(getStudentFileForRequiredFile(question, requiredFile.uuid))"
+                          >
                           <div class="image-overlay">
                             <el-button type="primary" size="small" icon="el-icon-zoom-in" @click="previewImage(getStudentFileForRequiredFile(question, requiredFile.uuid))">预览</el-button>
                           </div>
@@ -150,7 +150,7 @@
                       </div>
                       <div v-else class="other-file">
                         <div class="file-info">
-                          <i class="el-icon-document"></i>
+                          <i class="el-icon-document" />
                           <span class="file-name">{{ getFileName(getStudentFileForRequiredFile(question, requiredFile.uuid)) }}</span>
                         </div>
                         <div class="file-actions">
@@ -172,12 +172,12 @@
               <div v-if="getStudentAnswer(question) && getStudentAnswer(question).file_url" class="file-display">
                 <div v-if="isImageFile(getStudentAnswer(question).file_url)" class="image-file">
                   <div class="image-container">
-                    <img 
-                      :src="getStudentAnswer(question).file_url" 
-                      @click="previewImage(getStudentAnswer(question).file_url)"
+                    <img
+                      :src="getStudentAnswer(question).file_url"
                       class="preview-image"
                       alt="学生上传的图片"
-                    />
+                      @click="previewImage(getStudentAnswer(question).file_url)"
+                    >
                     <div class="image-overlay">
                       <el-button type="primary" size="small" icon="el-icon-zoom-in" @click="previewImage(getStudentAnswer(question).file_url)">预览</el-button>
                     </div>
@@ -188,7 +188,7 @@
                 </div>
                 <div v-else class="other-file">
                   <div class="file-info">
-                    <i class="el-icon-document"></i>
+                    <i class="el-icon-document" />
                     <span class="file-name">{{ getFileName(getStudentAnswer(question).file_url) }}</span>
                   </div>
                   <div class="file-actions">
@@ -207,7 +207,7 @@
 
     <!-- 页面底部操作 -->
     <div class="exam-footer">
-      <el-button @click="$router.back()" icon="el-icon-back">返回</el-button>
+      <el-button icon="el-icon-back" @click="$router.back()">返回</el-button>
     </div>
   </div>
 </template>
@@ -221,7 +221,7 @@ export default {
     return {
       loading: false,
       examResults: [],
-      student_exam:{},
+      student_exam: {},
       studentInfo: {},
       exam_id: null,
       exam_name: null,
@@ -241,13 +241,12 @@ export default {
         name: this.$route.query.studentName || '未知',
         phone: this.$route.query.studentPhone || '未知'
       }
-      this.exam_name=this.$route.query.exam_name || '未知',
-      
-      
+      this.exam_name = this.$route.query.exam_name || '未知'
+
       fetchStudentExamResult(this.exam_id, this.student_id)
         .then(res => {
           this.examResults = res.data.questions || []
-          this.student_exam=res.data.student_exam
+          this.student_exam = res.data.student_exam
           this.loading = false
         })
         .catch(error => {
@@ -287,7 +286,7 @@ export default {
     getStudentFileForRequiredFile(question, requiredFileUuid) {
       const studentAnswer = this.getStudentAnswer(question)
       if (!studentAnswer) return null
-      
+
       // 优先使用file_answers字段（多文件答题）
       if (studentAnswer.file_answers) {
         try {
@@ -299,7 +298,7 @@ export default {
           console.error('解析file_answers失败:', e)
         }
       }
-      
+
       // 向后兼容：使用option_answers字段
       if (studentAnswer.option_answers) {
         try {
@@ -311,14 +310,14 @@ export default {
           console.error('解析option_answers失败:', e)
         }
       }
-      
+
       return null
     },
     // 检查选项是否被选中
     isOptionSelected(question, subIndex, optionIndex) {
       const studentAnswer = this.getStudentAnswer(question)
       if (!studentAnswer || !studentAnswer.option_answers) return false
-      
+
       try {
         const answers = JSON.parse(studentAnswer.option_answers)
         if (Array.isArray(answers)) {
@@ -334,7 +333,7 @@ export default {
     getSubQuestionAnswer(question, subIndex) {
       const studentAnswer = this.getStudentAnswer(question)
       if (!studentAnswer || !studentAnswer.option_answers) return null
-      
+
       try {
         const answers = JSON.parse(studentAnswer.option_answers)
         if (typeof answers === 'string') {
@@ -368,9 +367,19 @@ export default {
     },
     // 下载文件
     downloadFile(fileUrl) {
+      if (!fileUrl) {
+        this.$message.error('文件URL为空')
+        return
+      }
+
+      // 构建完整的URL
+      const baseUrl = 'http://localhost:8000' // 后端服务器地址
+      const fullUrl = fileUrl.startsWith('http') ? fileUrl : baseUrl + fileUrl
+
       const link = document.createElement('a')
-      link.href = fileUrl
+      link.href = fullUrl
       link.download = this.getFileName(fileUrl)
+      link.target = '_blank' // 在新窗口打开，避免页面跳转
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -937,46 +946,46 @@ export default {
   .exam-detail-container {
     padding: 10px;
   }
-  
+
   .header-content {
     flex-direction: column;
     gap: 20px;
   }
-  
+
   .header-right {
     text-align: left;
   }
-  
+
   .time-item {
     align-items: flex-start;
   }
-  
+
   .student-basic-info {
     grid-template-columns: 1fr;
   }
-  
+
   .question-title {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
   }
-  
+
   .question-tags {
     align-self: flex-end;
   }
-  
+
   .sub-question-title {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
   }
-  
+
   .file-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
   }
-  
+
   .file-tags {
     align-self: flex-end;
   }
@@ -1004,9 +1013,9 @@ export default {
     text-align: center;
     padding: 20px;
   }
-  
+
   .el-message-box__message {
     margin: 0;
   }
 }
-</style> 
+</style>
