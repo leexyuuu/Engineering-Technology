@@ -156,7 +156,7 @@ const handleLogin = async () => {
         alert('登录成功！暂无可参加的考试')
       }
 
-      router.push('/exam')
+      router.push('/exam-notice')
     } else {
       // 登录失败
       errorMessage.value = data.message || '登录失败，请检查手机号码和密码'
