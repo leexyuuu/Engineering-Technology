@@ -3,11 +3,11 @@
     <!-- 左侧蓝色背景区域 -->
     <div class="left-section">
       <div class="logo-section">
-        <div class="logo-circle">
+        <!-- <div class="logo-circle">
           <span class="logo-text">SDU</span>
-        </div>
-        <h1 class="university-name">杉达学院</h1>
-        <h2 class="exam-title">职业技能等级认定考试</h2>
+        </div> -->
+        <h1 class="university-name">人工智能推介官</h1>
+        <h2 class="exam-title">定向培训考核</h2>
       </div>
     </div>
 
@@ -65,7 +65,12 @@
           {{ errorMessage }}
         </div>
 
-        <!-- 移除注册入口 -->
+        <!-- 测试按钮 -->
+        <div class="test-buttons">
+          <button @click="goToChoiceExam" class="test-btn">
+            测试选择题考试界面
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -87,6 +92,10 @@ const togglePassword = () => {
 }
 
 // 移除goToRegister函数
+
+const goToChoiceExam = () => {
+  router.push('/choice-exam')
+}
 
 const handleLogin = async () => {
   if (!username.value || !password.value) {
@@ -176,13 +185,28 @@ const handleLogin = async () => {
 }
 
 .left-section {
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  background-image: url('@/assets/shanghai-skyline.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   margin: 0;
   padding: 0;
+}
+
+/* 添加蓝色蒙层 */
+.left-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(30, 60, 114, 0.6); /* 浅浅的蓝色蒙层，透明度0.6 */
+  z-index: 1;
 }
 
 .left-section::after {
@@ -208,7 +232,7 @@ const handleLogin = async () => {
 .logo-section {
   text-align: center;
   color: white;
-  z-index: 1;
+  z-index: 2; /* 确保在蓝色蒙层之上 */
   position: relative;
 }
 
@@ -345,7 +369,26 @@ const handleLogin = async () => {
   text-align: center;
 }
 
-/* 移除注册相关样式 */
+/* 测试按钮样式 */
+.test-buttons {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.test-btn {
+  padding: 10px 20px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.test-btn:hover {
+  background: #5a6268;
+}
 
 /* 响应式设计 */
 @media (max-width: 768px) {
@@ -356,6 +399,8 @@ const handleLogin = async () => {
   
   .left-section {
     min-height: 200px;
+    background-size: cover;
+    background-position: center;
   }
   
   .left-section::after {
@@ -372,6 +417,14 @@ const handleLogin = async () => {
   
   .exam-title {
     font-size: 18px;
+  }
+}
+
+/* 大屏幕优化 */
+@media (min-width: 1200px) {
+  .left-section {
+    background-size: cover;
+    background-position: center;
   }
 }
 </style> 
