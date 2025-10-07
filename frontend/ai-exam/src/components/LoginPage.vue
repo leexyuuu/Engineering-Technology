@@ -65,12 +65,6 @@
           {{ errorMessage }}
         </div>
 
-        <!-- 测试按钮 -->
-        <div class="test-buttons">
-          <button @click="goToChoiceExam" class="test-btn">
-            测试选择题考试界面
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -93,9 +87,6 @@ const togglePassword = () => {
 
 // 移除goToRegister函数
 
-const goToChoiceExam = () => {
-  router.push('/choice-exam')
-}
 
 const handleLogin = async () => {
   if (!username.value || !password.value) {
@@ -369,26 +360,6 @@ const handleLogin = async () => {
   text-align: center;
 }
 
-/* 测试按钮样式 */
-.test-buttons {
-  margin-top: 20px;
-  text-align: center;
-}
-
-.test-btn {
-  padding: 10px 20px;
-  background: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.test-btn:hover {
-  background: #5a6268;
-}
 
 /* 响应式设计 */
 @media (max-width: 768px) {
