@@ -84,11 +84,11 @@
                   <td>
                     <input 
                       type="file" 
-                      :id="'file-' + index" 
+                      :id="'file-' + currentQuestionData?.id + '-' + index" 
                       style="display: none;" 
                       @change="onFileSelected($event, index)"
                     />
-                    <label :for="'file-' + index" class="file-input-label">选择文件</label>
+                    <label :for="'file-' + currentQuestionData?.id + '-' + index" class="file-input-label">选择文件</label>
                     <div v-if="selectedFiles[index]" class="selected-file">
                       📎 {{ selectedFiles[index].name }}
                     </div>
@@ -336,7 +336,7 @@ const goToPreviousQuestion = async () => {
     const prevQuestion = examData.value.questions[currentIndex - 1]
     currentAnswerStatus.value = answerStatus.value[prevQuestion.id] || 'not_answered'
     uploadedFilesCount.value = 0 // 重置上传计数
-    selectedFiles.value = {} // 重置选择的文件
+    selectedFiles.value = [] // 重置选择的文件
   }
 }
 
@@ -353,7 +353,7 @@ const goToNextQuestion = async () => {
     const nextQuestion = examData.value.questions[currentIndex + 1]
     currentAnswerStatus.value = answerStatus.value[nextQuestion.id] || 'not_answered'
     uploadedFilesCount.value = 0 // 重置上传计数
-    selectedFiles.value = {} // 重置选择的文件
+    selectedFiles.value = [] // 重置选择的文件
   }
 }
 
@@ -570,7 +570,7 @@ const uploadAnswerFile = async (index) => {
       alert(`文件 ${file.name} 上传成功！`)
       selectedFiles.value[index] = null // 清空已上传的文件
       // 清空文件输入框
-      const fileInput = document.getElementById(`file-${index}`)
+      const fileInput = document.getElementById(`file-${questionId}-${index}`)
       if (fileInput) {
         fileInput.value = ''
       }
