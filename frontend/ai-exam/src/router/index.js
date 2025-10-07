@@ -3,7 +3,6 @@ import LoginPage from '../components/LoginPage.vue'
 import ExamPage from '../components/ExamPage.vue'
 import RegisterPage from '../components/RegisterPage.vue'
 import ExamNotice from '../components/ExamNotice.vue'
-import ChoiceExamPage from '../components/ChoiceExamPage.vue'
 
 const routes = [
   {
@@ -26,11 +25,6 @@ const routes = [
     name: 'Exam',
     component: ExamPage
   },
-  {
-    path: '/choice-exam',
-    name: 'ChoiceExam',
-    component: ChoiceExamPage
-  }
 ]
 
 const router = createRouter({
