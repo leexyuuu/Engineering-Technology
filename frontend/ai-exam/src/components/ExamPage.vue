@@ -97,16 +97,16 @@
                     <button 
                       class="upload-btn" 
                       @click="uploadAnswerFile(index)"
-                      :disabled="!selectedFiles[index] || uploadStatus[index] === 'uploading'"
+                      :disabled="!selectedFiles[index] || uploadStatus[currentQuestionData?.id + '_' + index] === 'uploading'"
                       :class="{
-                        'uploading': uploadStatus[index] === 'uploading',
-                        'success': uploadStatus[index] === 'success',
-                        'error': uploadStatus[index] === 'error'
+                        'uploading': uploadStatus[currentQuestionData?.id + '_' + index] === 'uploading',
+                        'success': uploadStatus[currentQuestionData?.id + '_' + index] === 'success',
+                        'error': uploadStatus[currentQuestionData?.id + '_' + index] === 'error'
                       }"
                     >
-                      <span v-if="uploadStatus[index] === 'uploading'">上传中...</span>
-                      <span v-else-if="uploadStatus[index] === 'success'">✅ 已上传</span>
-                      <span v-else-if="uploadStatus[index] === 'error'">❌ 重试</span>
+                      <span v-if="uploadStatus[currentQuestionData?.id + '_' + index] === 'uploading'">上传中...</span>
+                      <span v-else-if="uploadStatus[currentQuestionData?.id + '_' + index] === 'success'">✅ 已上传</span>
+                      <span v-else-if="uploadStatus[currentQuestionData?.id + '_' + index] === 'error'">❌ 重试</span>
                       <span v-else>上传答案{{ index + 1 }}</span>
                     </button>
                   </td>
@@ -268,16 +268,32 @@ const isCurrentQuestionComplete = computed(() => {
   return uploadedFilesCount.value >= requiredCount
 })
 
-// 下载文件列表
-const downloadFiles = ref([
-  { name: '2.2.3.ipynb', url: '#' },
-  { name: '2.2.3.docx', url: '#' },
-  { name: 'fitness analysis.csv', url: '#' }
-])
+// 下载文件列表 - 从当前题目数据获取
+const downloadFiles = computed(() => {
+  if (!currentQuestionData.value?.material_files) {
+    return [
+      { name: '2.2.3.ipynb', url: '#' },
+      { name: '2.2.3.docx', url: '#' },
+      { name: 'fitness analysis.csv', url: '#' }
+    ]
+  }
+  
+  try {
+    const materialFiles = JSON.parse(currentQuestionData.value.material_files)
+    return materialFiles.map(file => ({
+      name: file.name,
+      url: file.url.startsWith('http') ? file.url : `/api${file.url}`
+    }))
+  } catch (e) {
+    console.error('解析material_files失败:', e)
+    return []
+  }
+})
 
 // 文件上传状态
 const selectedFiles = ref([])
 const uploadStatus = ref({}) // 记录每个文件的上传状态
+
 
 // 加载考试数据
 const loadExamData = async () => {
@@ -363,7 +379,7 @@ const submitExam = async () => {
       const examId = examData.exam.id
 
       // 调用交卷接口
-      const response = await fetch(`http://localhost:8000/student/exams/${examId}/submit`, {
+      const response = await fetch(`/api/student/exams/${examId}/submit`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -419,10 +435,7 @@ const formatTime = (seconds) => {
 
 // 下载文件方法
 const downloadFile = (file) => {
-  // 这里可以添加实际的下载逻辑
-  console.log(`开始下载文件: ${file.name}`)
-  
-  // 模拟下载过程
+  // 创建下载链接
   const link = document.createElement('a')
   link.href = file.url
   link.download = file.name
@@ -440,12 +453,12 @@ const onFileSelected = (event, index) => {
   const file = event.target.files[0]
   if (file) {
     selectedFiles.value[index] = file
-    uploadStatus.value[index] = 'ready'
+    uploadStatus.value[currentQuestionData.value.id + '_' + index] = 'ready'
     // 更新答题状态为"进行中"
     currentAnswerStatus.value = 'in_progress'
   } else {
     selectedFiles.value[index] = null
-    uploadStatus.value[index] = null
+    uploadStatus.value[currentQuestionData.value.id + '_' + index] = null
   }
 }
 
@@ -458,7 +471,6 @@ const saveCurrentAnswerStatus = async () => {
                          Object.keys(selectedFiles.value).some(key => selectedFiles.value[key])
   
   if (!hasAnyOperation) {
-    console.log('当前题目无操作，跳过保存')
     return
   }
   
@@ -469,7 +481,7 @@ const saveCurrentAnswerStatus = async () => {
       return
     }
 
-    const response = await fetch('http://localhost:8000/student/answers/save', {
+    const response = await fetch('/api/student/answers/save', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -492,7 +504,6 @@ const saveCurrentAnswerStatus = async () => {
     const result = await response.json()
     
     if (response.ok && result.code === 20000) {
-      console.log('答题状态保存成功')
       // 更新全局答题状态
       answerStatus.value[currentQuestionData.value.id] = currentAnswerStatus.value
     } else {
@@ -505,6 +516,12 @@ const saveCurrentAnswerStatus = async () => {
 
 // 上传答案文件
 const uploadAnswerFile = async (index) => {
+  const questionId = currentQuestionData.value?.id
+  if (!questionId) {
+    alert('题目信息错误！')
+    return
+  }
+
   const file = selectedFiles.value[index]
   if (!file) {
     alert('请选择要上传的文件！')
@@ -521,7 +538,7 @@ const uploadAnswerFile = async (index) => {
   }
 
   // 设置上传状态
-  uploadStatus.value[index] = 'uploading'
+  uploadStatus.value[currentQuestionData.value.id + '_' + index] = 'uploading'
 
   const formData = new FormData()
   formData.append('file', file)
@@ -538,7 +555,7 @@ const uploadAnswerFile = async (index) => {
       return
     }
 
-    const response = await fetch('http://localhost:8000/student/answers/file', {
+    const response = await fetch('/api/student/answers/file', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -549,7 +566,7 @@ const uploadAnswerFile = async (index) => {
     const result = await response.json()
 
     if (response.ok && result.code === 20000) {
-      uploadStatus.value[index] = 'success'
+      uploadStatus.value[currentQuestionData.value.id + '_' + index] = 'success'
       alert(`文件 ${file.name} 上传成功！`)
       selectedFiles.value[index] = null // 清空已上传的文件
       // 清空文件输入框
@@ -567,16 +584,13 @@ const uploadAnswerFile = async (index) => {
         currentAnswerStatus.value = 'answered'
         // 保存答题状态到后端
         await saveCurrentAnswerStatus()
-        console.log('所有文件上传完成，答题状态已保存')
-      } else {
-        console.log(`已上传 ${uploadedFilesCount.value}/${currentQuestionRequiredFiles.value.length} 个文件`)
       }
     } else {
-      uploadStatus.value[index] = 'error'
+      uploadStatus.value[currentQuestionData.value.id + '_' + index] = 'error'
       alert(`文件 ${file.name} 上传失败: ${result.message || '未知错误'}`)
     }
   } catch (error) {
-    uploadStatus.value[index] = 'error'
+    uploadStatus.value[currentQuestionData.value.id + '_' + index] = 'error'
     console.error('上传文件失败:', error)
     alert('上传文件失败，请稍后再试。')
   }

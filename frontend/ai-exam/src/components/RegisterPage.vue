@@ -164,7 +164,7 @@ const handleRegister = async () => {
 
   try {
     // 调用后端注册接口，使用JSON格式
-    const response = await fetch('http://localhost:8000/student/register', {
+    const response = await fetch('/api/student/register', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

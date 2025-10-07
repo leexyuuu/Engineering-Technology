@@ -108,7 +108,7 @@ const handleLogin = async () => {
 
   try {
     // 调用后端学生登录接口
-    const response = await fetch('http://localhost:8000/student/login', {
+    const response = await fetch('/api/student/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -131,7 +131,7 @@ const handleLogin = async () => {
       // 如果有可参加的考试，获取试题
       if (data.data.upcoming_exam && data.data.upcoming_exam.exam_id) {
         try {
-          const examResponse = await fetch(`http://localhost:8000/student/exams/${data.data.upcoming_exam.exam_id}/result/${data.data.id}`, {
+          const examResponse = await fetch(`/api/student/exams/${data.data.upcoming_exam.exam_id}/result/${data.data.id}`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${data.token}`,

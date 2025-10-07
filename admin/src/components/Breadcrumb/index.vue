@@ -37,7 +37,10 @@ export default {
       const first = matched[0]
 
       if (!this.isDashboard(first)) {
-        matched = [{ path: '/exam', meta: { title: '考试管理' }}].concat(matched)
+        // 检查是否已经包含 /exam 路径，避免重复添加
+        if (!matched.some(item => item.path === '/exam')) {
+          matched = [{ path: '/exam', meta: { title: '考试管理' }}].concat(matched)
+        }
       }
 
       this.levelList = matched.filter(item => item.meta && item.meta.title && item.meta.breadcrumb !== false)

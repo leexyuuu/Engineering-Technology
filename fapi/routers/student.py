@@ -301,7 +301,7 @@ def read_students(page: int = 1, page_size: int = 50,token: str = Header(..., al
 # 学生考试相关接口
 @app.post("/student/exams/start")
 def start_exam(
-    exam_data: StudentExamStart = Depends(), 
+    exam_data: StudentExamStart, 
     current_student: Student = Depends(get_current_student),
     db: Session = Depends(get_db)
 ):
@@ -326,9 +326,20 @@ def start_exam(
     if existing_exam:
         if existing_exam.status == "submitted":
             raise HTTPException(status_code=400, detail="You have already submitted this exam")
+        
+        # 如果状态是not_started，更新为in_progress
+        if existing_exam.status == "not_started":
+            print("更新现有考试记录状态为in_progress")
+            existing_exam.status = "in_progress"
+            existing_exam.start_time = datetime.now()
+            db.commit()
+            db.refresh(existing_exam)
+            print(f"更新后的状态: {existing_exam.status}")
+        
         return existing_exam
     
     # 创建新的考试记录
+    print("创建新的考试记录")
     student_exam = StudentExam(
         student_id=current_student.id,
         exam_id=exam_data.exam_id,
@@ -338,6 +349,7 @@ def start_exam(
     db.add(student_exam)
     db.commit()
     db.refresh(student_exam)
+    print(f"新考试记录创建成功 - 状态: {student_exam.status}")
     return student_exam
 
 @app.get("/student/exams/{exam_id}")
@@ -582,6 +594,7 @@ def get_exam_result(
             "order": question.order,
             "content": question.content,
             "required_files": question.required_files,
+            "material_files": question.material_files,
             "file_description": question.file_description,
             "uuid": question.uuid,
             "sub_questions_str": question.sub_questions_str,

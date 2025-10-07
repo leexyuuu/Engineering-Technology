@@ -13,8 +13,8 @@
       </div>
      
      <div class="button-container" >
-        <button class="button" @click="goToExam" :class="{'countdown-active': time > 0 }" :disabled="time > 0"> 
-          进入考试 &nbsp{{ time > 0 ? `${time}s`: ''}}
+        <button class="button" @click="goToExam" :class="{'countdown-active': time > 0 || isLoading }" :disabled="time > 0 || isLoading"> 
+          {{ time > 0 ? `考试将在 ${time}s 后开始` : (isLoading ? '正在开始考试...' : '进入考试') }}
         </button>
      </div>
     </div>
@@ -61,9 +61,49 @@
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const isLoading = ref(false)
 
-const goToExam = () => {
-  router.push('/exam')
+const goToExam = async () => {
+  if (isLoading.value) return // 防止重复点击
+  
+  try {
+    isLoading.value = true
+    
+    // 先调用开始考试API
+    const token = localStorage.getItem('studentToken')
+    const studentData = JSON.parse(localStorage.getItem('studentData'))
+    
+    if (!token || !studentData?.upcoming_exam?.exam_id) {
+      alert('考试信息不完整，请重新登录')
+      return
+    }
+
+    const response = await fetch('/api/student/exams/start', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        exam_id: studentData.upcoming_exam.exam_id
+      })
+    })
+
+    const result = await response.json()
+
+    if (response.ok) {
+      // 开始考试成功，跳转到考试页面
+      router.push('/exam')
+    } else {
+      // 开始考试失败，显示错误信息
+      alert(`开始考试失败: ${result.detail || result.message || '未知错误'}`)
+    }
+  } catch (error) {
+    console.error('开始考试请求失败:', error)
+    alert('网络错误，请稍后重试')
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
