@@ -28,6 +28,17 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# 服务器基础URL配置
+BASE_URL = os.getenv("BASE_URL", "http://106.14.190.33:8000")
+
+def convert_to_full_url(file_url):
+    """将相对路径转换为完整的URL"""
+    if not file_url:
+        return file_url
+    if file_url.startswith('http'):
+        return file_url
+    return f"{BASE_URL}{file_url}"
+
 
 @app.middleware("http")
 async def add_cors_headers(request: Request, call_next):
@@ -501,7 +512,7 @@ async def upload_answer_file(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    file_url = f"/uploads/{filename}"
+    file_url = f"{BASE_URL}/uploads/{filename}"
     
     # 保存答案
     existing_answer = db.query(StudentAnswer).filter(
@@ -588,6 +599,26 @@ def get_exam_result(
         # 查找该题目的学生答案
         student_answer = answer_dict.get(question.id)
         
+        # 处理文件URL转换
+        processed_file_answers = None
+        processed_file_url = None
+        
+        if student_answer:
+            # 处理file_answers（多文件题）
+            if student_answer.file_answers:
+                try:
+                    file_answers = json.loads(student_answer.file_answers)
+                    # 转换所有文件URL为完整URL
+                    for key, url in file_answers.items():
+                        file_answers[key] = convert_to_full_url(url)
+                    processed_file_answers = json.dumps(file_answers)
+                except json.JSONDecodeError:
+                    processed_file_answers = student_answer.file_answers
+            
+            # 处理file_url（单文件题）
+            if student_answer.file_url:
+                processed_file_url = convert_to_full_url(student_answer.file_url)
+        
         # 构建题目信息+答案的复合对象
         question_data = {
             "id": question.id,
@@ -602,7 +633,8 @@ def get_exam_result(
                 "id": student_answer.id if student_answer else None,
                 "answer_text": student_answer.answer_text if student_answer else None,
                 "option_answers": student_answer.option_answers if student_answer else None,
-                "file_answers": student_answer.file_answers if student_answer else None
+                "file_answers": processed_file_answers,
+                "file_url": processed_file_url
             } if student_answer else None
         }
         results.append(question_data)
