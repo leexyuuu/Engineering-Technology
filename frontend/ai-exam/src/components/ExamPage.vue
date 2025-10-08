@@ -89,15 +89,15 @@
                       @change="onFileSelected($event, index)"
                     />
                     <label :for="'file-' + currentQuestionData?.id + '-' + index" class="file-input-label">选择文件</label>
-                    <div v-if="selectedFiles[index]" class="selected-file">
-                      📎 {{ selectedFiles[index].name }}
+                    <div v-if="getSelectedFile(currentQuestionData?.id, index)" class="selected-file">
+                      📎 {{ getSelectedFile(currentQuestionData?.id, index).name }}
                     </div>
                   </td>
                   <td>
                     <button 
                       class="upload-btn" 
                       @click="uploadAnswerFile(index)"
-                      :disabled="!selectedFiles[index] || uploadStatus[currentQuestionData?.id + '_' + index] === 'uploading'"
+                      :disabled="!getSelectedFile(currentQuestionData?.id, index) || uploadStatus[currentQuestionData?.id + '_' + index] === 'uploading'"
                       :class="{
                         'uploading': uploadStatus[currentQuestionData?.id + '_' + index] === 'uploading',
                         'success': uploadStatus[currentQuestionData?.id + '_' + index] === 'success',
@@ -294,6 +294,12 @@ const downloadFiles = computed(() => {
 const selectedFiles = ref([])
 const uploadStatus = ref({}) // 记录每个文件的上传状态
 
+// 获取选中文件的辅助函数
+const getSelectedFile = (questionId, index) => {
+  const arrayIndex = questionId * 100 + index
+  return selectedFiles.value[arrayIndex]
+}
+
 
 // 加载考试数据
 const loadExamData = async () => {
@@ -451,14 +457,19 @@ const downloadFile = (file) => {
 // 文件选择事件
 const onFileSelected = (event, index) => {
   const file = event.target.files[0]
+  const questionId = currentQuestionData.value.id
+  
   if (file) {
-    selectedFiles.value[index] = file
-    uploadStatus.value[currentQuestionData.value.id + '_' + index] = 'ready'
+    // 使用题目ID作为数组的偏移量，避免不同题目间的文件冲突
+    const arrayIndex = questionId * 100 + index
+    selectedFiles.value[arrayIndex] = file
+    uploadStatus.value[questionId + '_' + index] = 'ready'
     // 更新答题状态为"进行中"
     currentAnswerStatus.value = 'in_progress'
   } else {
-    selectedFiles.value[index] = null
-    uploadStatus.value[currentQuestionData.value.id + '_' + index] = null
+    const arrayIndex = questionId * 100 + index
+    selectedFiles.value[arrayIndex] = null
+    uploadStatus.value[questionId + '_' + index] = null
   }
 }
 
@@ -468,7 +479,7 @@ const saveCurrentAnswerStatus = async () => {
   
   // 检查是否有任何操作（选择文件或上传文件）
   const hasAnyOperation = uploadedFilesCount.value > 0 || 
-                         Object.keys(selectedFiles.value).some(key => selectedFiles.value[key])
+                         currentQuestionRequiredFiles.value.some((_, index) => getSelectedFile(currentQuestionData.value.id, index))
   
   if (!hasAnyOperation) {
     return
@@ -495,7 +506,7 @@ const saveCurrentAnswerStatus = async () => {
           answer_status: currentAnswerStatus.value,
           required_files_count: currentQuestionRequiredFiles.value.length,
           uploaded_files_count: uploadedFilesCount.value,
-          selected_files_count: Object.keys(selectedFiles.value).filter(key => selectedFiles.value[key]).length,
+          selected_files_count: currentQuestionRequiredFiles.value.filter((_, index) => getSelectedFile(currentQuestionData.value.id, index)).length,
           timestamp: new Date().toISOString()
         })
       })
@@ -522,7 +533,7 @@ const uploadAnswerFile = async (index) => {
     return
   }
 
-  const file = selectedFiles.value[index]
+  const file = getSelectedFile(currentQuestionData.value.id, index)
   if (!file) {
     alert('请选择要上传的文件！')
     return
@@ -568,7 +579,7 @@ const uploadAnswerFile = async (index) => {
     if (response.ok && result.code === 20000) {
       uploadStatus.value[currentQuestionData.value.id + '_' + index] = 'success'
       alert(`文件 ${file.name} 上传成功！`)
-      selectedFiles.value[index] = null // 清空已上传的文件
+      selectedFiles.value[questionId * 100 + index] = null // 清空已上传的文件
       // 清空文件输入框
       const fileInput = document.getElementById(`file-${questionId}-${index}`)
       if (fileInput) {
