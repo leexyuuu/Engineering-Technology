@@ -15,6 +15,7 @@ from fastapi.exceptions import RequestValidationError
 import os
 import uuid
 import json
+import random
 from login import checkUserToken,checkEdit,create_access_token
 from admin import checkToken
 from jose import JWTError, jwt
@@ -361,7 +362,21 @@ def start_exam(
     db.commit()
     db.refresh(student_exam)
     print(f"新考试记录创建成功 - 状态: {student_exam.status}")
-    return student_exam
+    
+    # 随机选择5道题
+    all_questions = db.query(Question).filter(Question.exam_id == exam_data.exam_id).all()
+    if len(all_questions) >= 5:
+        selected_questions = random.sample(all_questions, 5)
+        # 重新排序
+        for i, question in enumerate(selected_questions):
+            question.order = i + 1
+    else:
+        selected_questions = all_questions
+    
+    return {
+        "student_exam": student_exam,
+        "questions": selected_questions
+    }
 
 @app.get("/student/exams/{exam_id}")
 def get_student_exam(
