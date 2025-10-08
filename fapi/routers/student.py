@@ -362,21 +362,7 @@ def start_exam(
     db.commit()
     db.refresh(student_exam)
     print(f"新考试记录创建成功 - 状态: {student_exam.status}")
-    
-    # 随机选择5道题
-    all_questions = db.query(Question).filter(Question.exam_id == exam_data.exam_id).all()
-    if len(all_questions) >= 5:
-        selected_questions = random.sample(all_questions, 5)
-        # 重新排序
-        for i, question in enumerate(selected_questions):
-            question.order = i + 1
-    else:
-        selected_questions = all_questions
-    
-    return {
-        "student_exam": student_exam,
-        "questions": selected_questions
-    }
+    return student_exam
 
 @app.get("/student/exams/{exam_id}")
 def get_student_exam(
@@ -597,10 +583,18 @@ def get_exam_result(
     if not student_exam:
         raise HTTPException(status_code=404, detail="Submitted exam not found")
     
-    # 获取考试的所有题目（按顺序）
-    questions = db.query(Question).filter(
+    # 获取考试的所有题目并随机选择5道题
+    all_questions = db.query(Question).filter(
         Question.exam_id == exam_id
-    ).order_by(Question.order).all()
+    ).all()
+    
+    if len(all_questions) >= 5:
+        questions = random.sample(all_questions, 5)
+        # 重新排序
+        for i, question in enumerate(questions):
+            question.order = i + 1
+    else:
+        questions = all_questions
     
     # 获取学生的所有答案并映射到字典（question_id -> answer）
     student_answers = db.query(StudentAnswer).filter(
