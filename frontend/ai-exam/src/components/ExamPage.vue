@@ -119,10 +119,6 @@
           <div v-if="currentQuestionRequiredFiles.length > 0" class="upload-progress">
             <div class="progress-info">
               文件上传进度: {{ uploadedFilesCount }}/{{ currentQuestionRequiredFiles.length }}
-              <div style="font-size: 12px; color: #666;">
-                调试信息: uploadedFilesCount={{ uploadedFilesCount }}, requiredFiles={{ currentQuestionRequiredFiles.length }}
-                <br>进度条宽度: {{ currentQuestionRequiredFiles.length > 0 ? Math.round((uploadedFilesCount / currentQuestionRequiredFiles.length) * 100) : 0 }}%
-              </div>
             </div>
             <div class="progress-bar">
               <div 
@@ -342,8 +338,6 @@ const loadExamData = async () => {
 
 // 更新已上传文件计数
 const updateUploadedFilesCount = () => {
-  console.log('=== updateUploadedFilesCount called ===');
-  
   if (!currentQuestionData.value) {
     return;
   }
@@ -363,29 +357,20 @@ const updateUploadedFilesCount = () => {
   
   // 更新当前题目的上传计数
   questionUploadCounts.value[questionId] = count;
-  console.log(`Question ${questionId} uploadedFilesCount updated to:`, count);
-  console.log('=== updateUploadedFilesCount end ===');
 }
 
 // 初始化当前题目的上传状态
 const initializeCurrentQuestionStatus = () => {
-  console.log('=== initializeCurrentQuestionStatus called ===');
-  console.log('currentQuestionData:', currentQuestionData.value);
-  
   if (!currentQuestionData.value) {
-    console.log('No currentQuestionData, returning');
     return;
   }
   
   // 基于实际上传状态重新计算当前题目的上传计数
   updateUploadedFilesCount();
-  
-  console.log('=== initializeCurrentQuestionStatus end ===');
 }
 
 // 导航方法
 const goToPreviousQuestion = async () => {
-  console.log('=== goToPreviousQuestion called ===');
   if (!examData.value?.questions) return
   
   // 保存当前题目的答题状态
@@ -400,11 +385,9 @@ const goToPreviousQuestion = async () => {
     // 初始化新题目的状态
     initializeCurrentQuestionStatus()
   }
-  console.log('=== goToPreviousQuestion end ===');
 }
 
 const goToNextQuestion = async () => {
-  console.log('=== goToNextQuestion called ===');
   if (!examData.value?.questions) return
   
   // 保存当前题目的答题状态
@@ -419,7 +402,6 @@ const goToNextQuestion = async () => {
     // 初始化新题目的状态
     initializeCurrentQuestionStatus()
   }
-  console.log('=== goToNextQuestion end ===');
 }
 
 const submitExam = async () => {
