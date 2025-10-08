@@ -331,6 +331,31 @@ const loadExamData = async () => {
   }
 }
 
+// 更新已上传文件计数
+const updateUploadedFilesCount = () => {
+  console.log('=== updateUploadedFilesCount called ===');
+  
+  if (!currentQuestionData.value) {
+    uploadedFilesCount.value = 0;
+    return;
+  }
+  
+  // 计算当前题目已上传的文件数量
+  let count = 0;
+  const requiredFiles = currentQuestionRequiredFiles.value;
+  
+  for (let i = 0; i < requiredFiles.length; i++) {
+    const statusKey = currentQuestionData.value.id + '_' + i;
+    if (uploadStatus.value[statusKey] === 'success') {
+      count++;
+    }
+  }
+  
+  uploadedFilesCount.value = count;
+  console.log('uploadedFilesCount updated to:', uploadedFilesCount.value);
+  console.log('=== updateUploadedFilesCount end ===');
+}
+
 // 初始化当前题目的上传状态
 const initializeCurrentQuestionStatus = () => {
   console.log('=== initializeCurrentQuestionStatus called ===');
@@ -346,8 +371,8 @@ const initializeCurrentQuestionStatus = () => {
   uploadedFilesCount.value = 0;
   
   // 检查当前题目是否已经有上传的文件
-  // 这里需要根据实际的数据结构来判断
-  // 暂时先重置为0，后续可以根据需要添加逻辑
+  // 基于实际上传状态重新计算
+  updateUploadedFilesCount();
   
   console.log('uploadedFilesCount after:', uploadedFilesCount.value);
   console.log('=== initializeCurrentQuestionStatus end ===');
@@ -616,8 +641,8 @@ const uploadAnswerFile = async (index) => {
       }
       
       // 重新计算已上传文件计数
-      // 不要简单累加，而是基于实际状态计算
-      // uploadedFilesCount.value++
+      // 基于当前题目的实际上传状态重新计算
+      updateUploadedFilesCount()
       
       // 检查是否所有文件都已上传完成
       if (isCurrentQuestionComplete.value) {
