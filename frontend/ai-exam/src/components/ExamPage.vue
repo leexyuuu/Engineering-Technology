@@ -345,6 +345,10 @@ const initializeCurrentQuestionStatus = () => {
   // 重置上传计数
   uploadedFilesCount.value = 0;
   
+  // 检查当前题目是否已经有上传的文件
+  // 这里需要根据实际的数据结构来判断
+  // 暂时先重置为0，后续可以根据需要添加逻辑
+  
   console.log('uploadedFilesCount after:', uploadedFilesCount.value);
   console.log('=== initializeCurrentQuestionStatus end ===');
 }
@@ -611,8 +615,9 @@ const uploadAnswerFile = async (index) => {
         fileInput.value = ''
       }
       
-      // 增加已上传文件计数
-      uploadedFilesCount.value++
+      // 重新计算已上传文件计数
+      // 不要简单累加，而是基于实际状态计算
+      // uploadedFilesCount.value++
       
       // 检查是否所有文件都已上传完成
       if (isCurrentQuestionComplete.value) {
