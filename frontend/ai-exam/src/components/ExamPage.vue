@@ -328,6 +328,18 @@ const loadExamData = async () => {
   }
 }
 
+// 初始化当前题目的上传状态
+const initializeCurrentQuestionStatus = () => {
+  if (!currentQuestionData.value) return
+  
+  // 重置上传计数
+  uploadedFilesCount.value = 0
+  
+  // 检查当前题目是否已经有上传的文件
+  // 这里需要根据实际的数据结构来判断
+  // 暂时先重置为0，后续可以根据需要添加逻辑
+}
+
 // 导航方法
 const goToPreviousQuestion = async () => {
   if (!examData.value?.questions) return
@@ -341,8 +353,8 @@ const goToPreviousQuestion = async () => {
     // 重置当前题目的答题状态和上传计数
     const prevQuestion = examData.value.questions[currentIndex - 1]
     currentAnswerStatus.value = answerStatus.value[prevQuestion.id] || 'not_answered'
-    uploadedFilesCount.value = 0 // 重置上传计数
-    // 不重置selectedFiles，保持文件选择状态
+    // 初始化新题目的状态
+    initializeCurrentQuestionStatus()
   }
 }
 
@@ -358,8 +370,8 @@ const goToNextQuestion = async () => {
     // 重置当前题目的答题状态和上传计数
     const nextQuestion = examData.value.questions[currentIndex + 1]
     currentAnswerStatus.value = answerStatus.value[nextQuestion.id] || 'not_answered'
-    uploadedFilesCount.value = 0 // 重置上传计数
-    // 不重置selectedFiles，保持文件选择状态
+    // 初始化新题目的状态
+    initializeCurrentQuestionStatus()
   }
 }
 
@@ -625,6 +637,8 @@ const startTimer = () => {
 onMounted(() => {
   startTimer()
   loadExamData()
+  // 初始化当前题目状态
+  initializeCurrentQuestionStatus()
 })
 
 // 组件卸载时清理定时器
