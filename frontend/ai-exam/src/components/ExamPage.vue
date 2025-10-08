@@ -119,6 +119,9 @@
           <div v-if="currentQuestionRequiredFiles.length > 0" class="upload-progress">
             <div class="progress-info">
               文件上传进度: {{ uploadedFilesCount }}/{{ currentQuestionRequiredFiles.length }}
+              <div style="font-size: 12px; color: #666;">
+                调试信息: uploadedFilesCount={{ uploadedFilesCount }}, requiredFiles={{ currentQuestionRequiredFiles.length }}
+              </div>
             </div>
             <div class="progress-bar">
               <div 
@@ -330,18 +333,25 @@ const loadExamData = async () => {
 
 // 初始化当前题目的上传状态
 const initializeCurrentQuestionStatus = () => {
-  if (!currentQuestionData.value) return
+  console.log('=== initializeCurrentQuestionStatus called ===');
+  console.log('currentQuestionData:', currentQuestionData.value);
+  console.log('uploadedFilesCount before:', uploadedFilesCount.value);
+  
+  if (!currentQuestionData.value) {
+    console.log('No currentQuestionData, returning');
+    return;
+  }
   
   // 重置上传计数
-  uploadedFilesCount.value = 0
+  uploadedFilesCount.value = 0;
   
-  // 检查当前题目是否已经有上传的文件
-  // 这里需要根据实际的数据结构来判断
-  // 暂时先重置为0，后续可以根据需要添加逻辑
+  console.log('uploadedFilesCount after:', uploadedFilesCount.value);
+  console.log('=== initializeCurrentQuestionStatus end ===');
 }
 
 // 导航方法
 const goToPreviousQuestion = async () => {
+  console.log('=== goToPreviousQuestion called ===');
   if (!examData.value?.questions) return
   
   // 保存当前题目的答题状态
@@ -356,9 +366,11 @@ const goToPreviousQuestion = async () => {
     // 初始化新题目的状态
     initializeCurrentQuestionStatus()
   }
+  console.log('=== goToPreviousQuestion end ===');
 }
 
 const goToNextQuestion = async () => {
+  console.log('=== goToNextQuestion called ===');
   if (!examData.value?.questions) return
   
   // 保存当前题目的答题状态
@@ -373,6 +385,7 @@ const goToNextQuestion = async () => {
     // 初始化新题目的状态
     initializeCurrentQuestionStatus()
   }
+  console.log('=== goToNextQuestion end ===');
 }
 
 const submitExam = async () => {
