@@ -336,7 +336,7 @@ const goToPreviousQuestion = async () => {
     const prevQuestion = examData.value.questions[currentIndex - 1]
     currentAnswerStatus.value = answerStatus.value[prevQuestion.id] || 'not_answered'
     uploadedFilesCount.value = 0 // 重置上传计数
-    selectedFiles.value = [] // 重置选择的文件
+    // 不重置selectedFiles，保持文件选择状态
   }
 }
 
@@ -353,7 +353,7 @@ const goToNextQuestion = async () => {
     const nextQuestion = examData.value.questions[currentIndex + 1]
     currentAnswerStatus.value = answerStatus.value[nextQuestion.id] || 'not_answered'
     uploadedFilesCount.value = 0 // 重置上传计数
-    selectedFiles.value = [] // 重置选择的文件
+    // 不重置selectedFiles，保持文件选择状态
   }
 }
 
