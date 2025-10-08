@@ -121,12 +121,13 @@
               文件上传进度: {{ uploadedFilesCount }}/{{ currentQuestionRequiredFiles.length }}
               <div style="font-size: 12px; color: #666;">
                 调试信息: uploadedFilesCount={{ uploadedFilesCount }}, requiredFiles={{ currentQuestionRequiredFiles.length }}
+                <br>进度条宽度: {{ currentQuestionRequiredFiles.length > 0 ? Math.round((uploadedFilesCount / currentQuestionRequiredFiles.length) * 100) : 0 }}%
               </div>
             </div>
             <div class="progress-bar">
               <div 
                 class="progress-fill" 
-                :style="{ width: `${(uploadedFilesCount / currentQuestionRequiredFiles.length) * 100}%` }"
+                :style="{ width: `${currentQuestionRequiredFiles.length > 0 ? (uploadedFilesCount / currentQuestionRequiredFiles.length) * 100 : 0}%` }"
               ></div>
             </div>
           </div>
@@ -209,7 +210,14 @@ const studentData = ref(null)
 // 答案状态管理
 const answerStatus = ref({}) // 记录每个题目的答题状态
 const currentAnswerStatus = ref('not_answered') // 当前题目的答题状态
-const uploadedFilesCount = ref(0) // 当前题目已上传的文件数量
+
+// 计算当前题目的已上传文件数量
+const uploadedFilesCount = computed(() => {
+  if (!currentQuestionData.value) return 0
+  
+  const questionId = currentQuestionData.value.id
+  return questionUploadCounts.value[questionId] || 0
+})
 
 // Markdown渲染函数
 const renderMarkdown = (content) => {
@@ -296,6 +304,7 @@ const downloadFiles = computed(() => {
 // 文件上传状态
 const selectedFiles = ref([])
 const uploadStatus = ref({}) // 记录每个文件的上传状态
+const questionUploadCounts = ref({}) // 按题目分别记录上传计数
 
 // 获取选中文件的辅助函数
 const getSelectedFile = (questionId, index) => {
@@ -336,23 +345,25 @@ const updateUploadedFilesCount = () => {
   console.log('=== updateUploadedFilesCount called ===');
   
   if (!currentQuestionData.value) {
-    uploadedFilesCount.value = 0;
     return;
   }
+  
+  const questionId = currentQuestionData.value.id;
   
   // 计算当前题目已上传的文件数量
   let count = 0;
   const requiredFiles = currentQuestionRequiredFiles.value;
   
   for (let i = 0; i < requiredFiles.length; i++) {
-    const statusKey = currentQuestionData.value.id + '_' + i;
+    const statusKey = questionId + '_' + i;
     if (uploadStatus.value[statusKey] === 'success') {
       count++;
     }
   }
   
-  uploadedFilesCount.value = count;
-  console.log('uploadedFilesCount updated to:', uploadedFilesCount.value);
+  // 更新当前题目的上传计数
+  questionUploadCounts.value[questionId] = count;
+  console.log(`Question ${questionId} uploadedFilesCount updated to:`, count);
   console.log('=== updateUploadedFilesCount end ===');
 }
 
@@ -360,21 +371,15 @@ const updateUploadedFilesCount = () => {
 const initializeCurrentQuestionStatus = () => {
   console.log('=== initializeCurrentQuestionStatus called ===');
   console.log('currentQuestionData:', currentQuestionData.value);
-  console.log('uploadedFilesCount before:', uploadedFilesCount.value);
   
   if (!currentQuestionData.value) {
     console.log('No currentQuestionData, returning');
     return;
   }
   
-  // 重置上传计数
-  uploadedFilesCount.value = 0;
-  
-  // 检查当前题目是否已经有上传的文件
-  // 基于实际上传状态重新计算
+  // 基于实际上传状态重新计算当前题目的上传计数
   updateUploadedFilesCount();
   
-  console.log('uploadedFilesCount after:', uploadedFilesCount.value);
   console.log('=== initializeCurrentQuestionStatus end ===');
 }
 
