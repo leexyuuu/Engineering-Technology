@@ -250,5 +250,9 @@ async def get_file(filename: str):
         raise HTTPException(status_code=404, detail="文件不存在")
     
     from fastapi.responses import FileResponse
-    return FileResponse(file_path)
+    # 设置Content-Disposition头强制下载
+    return FileResponse(
+        file_path,
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 

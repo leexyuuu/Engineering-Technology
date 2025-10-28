@@ -372,14 +372,17 @@ export default {
         return
       }
 
-      // 构建完整的URL
-      const baseUrl = 'http://localhost:8000' // 后端服务器地址
-      const fullUrl = fileUrl.startsWith('http') ? fileUrl : baseUrl + fileUrl
+      // 构建完整的URL：在本地开发时替换为localhost:8000
+      let fullUrl = fileUrl
+      if (fileUrl.includes('51ai-exam.com') && location.hostname === 'localhost') {
+        // 本地开发环境，将线上URL替换为本地后端URL
+        fullUrl = fileUrl.replace('https://51ai-exam.com', 'http://localhost:8000')
+      }
 
       const link = document.createElement('a')
       link.href = fullUrl
       link.download = this.getFileName(fileUrl)
-      link.target = '_blank' // 在新窗口打开，避免页面跳转
+      // 移除target='_blank'，让文件直接下载而不是在新窗口打开
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

@@ -30,7 +30,7 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # 服务器基础URL配置
-BASE_URL = os.getenv("BASE_URL", "http://106.14.190.33:8000")
+BASE_URL = os.getenv("BASE_URL", "https://51ai-exam.com")
 
 def convert_to_full_url(file_url):
     """将相对路径转换为完整的URL"""

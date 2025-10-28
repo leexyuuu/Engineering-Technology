@@ -112,7 +112,12 @@ def checkEdit(token: str, userId: int, db: Session):
 
     # 尝试执行的代码
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        id = int(payload.get("sub"))
+        sub_value = payload.get("sub")
+        # 检查是否为admin用户
+        if sub_value == "admin":
+            id = 0  # admin用户特殊处理
+        else:
+            id = int(sub_value)
     except Exception as e:  # 捕获其他所有异常类型
         # 当其他异常发生时执行的代码
         print(f"发生了一个异常: {e}")
