@@ -74,7 +74,6 @@
                   <th>序号</th>
                   <th>要求</th>
                   <th>上传</th>
-                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -88,27 +87,12 @@
                       style="display: none;" 
                       @change="onFileSelected($event, index)"
                     />
-                    <label :for="'file-' + currentQuestionData?.id + '-' + index" class="file-input-label">选择文件</label>
+                    <label :for="'file-' + currentQuestionData?.id + '-' + index" class="file-input-label">
+                      {{ getSelectedFile(currentQuestionData?.id, index) ? '✓ 已选择' : '选择文件' }}
+                    </label>
                     <div v-if="getSelectedFile(currentQuestionData?.id, index)" class="selected-file">
                       📎 {{ getSelectedFile(currentQuestionData?.id, index).name }}
                     </div>
-                  </td>
-                  <td>
-                    <button 
-                      class="upload-btn" 
-                      @click="uploadAnswerFile(index)"
-                      :disabled="!getSelectedFile(currentQuestionData?.id, index) || uploadStatus[currentQuestionData?.id + '_' + index] === 'uploading'"
-                      :class="{
-                        'uploading': uploadStatus[currentQuestionData?.id + '_' + index] === 'uploading',
-                        'success': uploadStatus[currentQuestionData?.id + '_' + index] === 'success',
-                        'error': uploadStatus[currentQuestionData?.id + '_' + index] === 'error'
-                      }"
-                    >
-                      <span v-if="uploadStatus[currentQuestionData?.id + '_' + index] === 'uploading'">上传中...</span>
-                      <span v-else-if="uploadStatus[currentQuestionData?.id + '_' + index] === 'success'">✅ 已上传</span>
-                      <span v-else-if="uploadStatus[currentQuestionData?.id + '_' + index] === 'error'">❌ 重试</span>
-                      <span v-else>上传答案{{ index + 1 }}</span>
-                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -425,6 +409,9 @@ const submitExam = async () => {
       const examData = JSON.parse(examQuestionsData)
       const examId = examData.exam.id
 
+      // 先批量上传所有选中的文件
+      await uploadAllSelectedFiles()
+
       // 调用交卷接口
       const response = await fetch(`/api/student/exams/${examId}/submit`, {
         method: 'POST',
@@ -563,6 +550,32 @@ const saveCurrentAnswerStatus = async () => {
     }
   } catch (error) {
     console.error('保存答题状态请求失败:', error)
+  }
+}
+
+// 批量上传所有选中的文件
+const uploadAllSelectedFiles = async () => {
+  const questionId = currentQuestionData.value?.id
+  if (!questionId) return
+
+  const currentRequiredFiles = currentQuestionRequiredFiles.value
+  const uploadPromises = []
+
+  for (let index = 0; index < currentRequiredFiles.length; index++) {
+    const file = getSelectedFile(questionId, index)
+    if (file) {
+      uploadPromises.push(uploadAnswerFile(index))
+    }
+  }
+
+  if (uploadPromises.length > 0) {
+    try {
+      await Promise.all(uploadPromises)
+      alert('所有文件上传完成！')
+    } catch (error) {
+      console.error('批量上传失败:', error)
+      alert('部分文件上传失败，请检查后重试。')
+    }
   }
 }
 

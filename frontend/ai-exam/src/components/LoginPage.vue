@@ -6,8 +6,7 @@
         <!-- <div class="logo-circle">
           <span class="logo-text">SDU</span>
         </div> -->
-        <h1 class="university-name">人工智能推介官</h1>
-        <h2 class="exam-title">定向培训考核</h2>
+        <h1 class="university-name">人工智能训练师（三级）实践考试</h1>
       </div>
     </div>
 
