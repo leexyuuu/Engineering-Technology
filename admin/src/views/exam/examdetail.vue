@@ -169,30 +169,30 @@
             <!-- 单文件题答案（保持向后兼容） -->
             <div v-else-if="question.requires_file" class="file-answer-section">
               <h4>学生上传的文件：</h4>
-              <div v-if="getStudentAnswer(question) && getStudentAnswer(question).file_url" class="file-display">
-                <div v-if="isImageFile(getStudentAnswer(question).file_url)" class="image-file">
+              <div v-if="getStudentFileUrl(question)" class="file-display">
+                <div v-if="isImageFile(getStudentFileUrl(question))" class="image-file">
                   <div class="image-container">
                     <img
-                      :src="getStudentAnswer(question).file_url"
+                      :src="getStudentFileUrl(question)"
                       class="preview-image"
                       alt="学生上传的图片"
-                      @click="previewImage(getStudentAnswer(question).file_url)"
+                      @click="previewImage(getStudentFileUrl(question))"
                     >
                     <div class="image-overlay">
-                      <el-button type="primary" size="small" icon="el-icon-zoom-in" @click="previewImage(getStudentAnswer(question).file_url)">预览</el-button>
+                      <el-button type="primary" size="small" icon="el-icon-zoom-in" @click="previewImage(getStudentFileUrl(question))">预览</el-button>
                     </div>
                   </div>
                   <div class="file-actions">
-                    <el-button type="success" size="small" icon="el-icon-download" @click="downloadFile(getStudentAnswer(question).file_url)">下载</el-button>
+                    <el-button type="success" size="small" icon="el-icon-download" @click="downloadFile(getStudentFileUrl(question))">下载</el-button>
                   </div>
                 </div>
                 <div v-else class="other-file">
                   <div class="file-info">
                     <i class="el-icon-document" />
-                    <span class="file-name">{{ getFileName(getStudentAnswer(question).file_url) }}</span>
+                    <span class="file-name">{{ getFileName(getStudentFileUrl(question)) }}</span>
                   </div>
                   <div class="file-actions">
-                    <el-button type="primary" size="small" icon="el-icon-download" @click="downloadFile(getStudentAnswer(question).file_url)">下载</el-button>
+                    <el-button type="primary" size="small" icon="el-icon-download" @click="downloadFile(getStudentFileUrl(question))">下载</el-button>
                   </div>
                 </div>
               </div>
@@ -282,17 +282,44 @@ export default {
     getStudentAnswer(question) {
       return question.student_answer || null
     },
+    // 获取单文件题的文件URL（已处理）
+    getStudentFileUrl(question) {
+      const studentAnswer = this.getStudentAnswer(question)
+      if (!studentAnswer || !studentAnswer.file_url) return null
+      return this.processFileUrl(studentAnswer.file_url)
+    },
+    // 处理文件URL，确保能正确访问
+    processFileUrl(fileUrl) {
+      if (!fileUrl) return null
+
+      // 如果是完整的URL（https://51ai-exam.com/uploads/xxx），转换为通过代理访问
+      if (fileUrl.startsWith('https://51ai-exam.com/uploads/') || fileUrl.startsWith('http://51ai-exam.com/uploads/')) {
+        // 提取文件名，使用相对路径通过代理访问
+        const fileName = fileUrl.split('/').pop()
+        return `/uploads/${fileName}`
+      }
+
+      // 如果已经是相对路径，直接返回
+      if (fileUrl.startsWith('/uploads/')) {
+        return fileUrl
+      }
+
+      // 其他情况直接返回
+      return fileUrl
+    },
     // 获取学生为特定required_file上传的文件
     getStudentFileForRequiredFile(question, requiredFileUuid) {
       const studentAnswer = this.getStudentAnswer(question)
       if (!studentAnswer) return null
+
+      let fileUrl = null
 
       // 优先使用file_answers字段（多文件答题）
       if (studentAnswer.file_answers) {
         try {
           const fileAnswers = JSON.parse(studentAnswer.file_answers)
           if (fileAnswers && fileAnswers[requiredFileUuid]) {
-            return fileAnswers[requiredFileUuid]
+            fileUrl = fileAnswers[requiredFileUuid]
           }
         } catch (e) {
           console.error('解析file_answers失败:', e)
@@ -300,18 +327,19 @@ export default {
       }
 
       // 向后兼容：使用option_answers字段
-      if (studentAnswer.option_answers) {
+      if (!fileUrl && studentAnswer.option_answers) {
         try {
           const fileAnswers = JSON.parse(studentAnswer.option_answers)
           if (fileAnswers && fileAnswers[requiredFileUuid]) {
-            return fileAnswers[requiredFileUuid]
+            fileUrl = fileAnswers[requiredFileUuid]
           }
         } catch (e) {
           console.error('解析option_answers失败:', e)
         }
       }
 
-      return null
+      // 处理文件URL并返回
+      return fileUrl ? this.processFileUrl(fileUrl) : null
     },
     // 检查选项是否被选中
     isOptionSelected(question, subIndex, optionIndex) {
@@ -372,15 +400,11 @@ export default {
         return
       }
 
-      // 构建完整的URL：在本地开发时替换为localhost:8000
-      let fullUrl = fileUrl
-      if (fileUrl.includes('51ai-exam.com') && location.hostname === 'localhost') {
-        // 本地开发环境，将线上URL替换为本地后端URL
-        fullUrl = fileUrl.replace('https://51ai-exam.com', 'http://localhost:8000')
-      }
+      // 使用统一的URL处理方法
+      const processedUrl = this.processFileUrl(fileUrl)
 
       const link = document.createElement('a')
-      link.href = fullUrl
+      link.href = processedUrl
       link.download = this.getFileName(fileUrl)
       // 移除target='_blank'，让文件直接下载而不是在新窗口打开
       document.body.appendChild(link)

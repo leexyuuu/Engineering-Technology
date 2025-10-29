@@ -483,7 +483,7 @@ const downloadFile = (file) => {
 }
 
 // 文件选择事件
-const onFileSelected = (event, index) => {
+const onFileSelected = async (event, index) => {
   const file = event.target.files[0]
   const questionId = currentQuestionData.value.id
   
@@ -491,13 +491,29 @@ const onFileSelected = (event, index) => {
     // 使用题目ID作为数组的偏移量，避免不同题目间的文件冲突
     const arrayIndex = questionId * 100 + index
     selectedFiles.value[arrayIndex] = file
-    uploadStatus.value[questionId + '_' + index] = 'ready'
+    
+    // 如果之前已经上传成功，重置状态以便重新上传
+    const statusKey = questionId + '_' + index
+    if (uploadStatus.value[statusKey] === 'success') {
+      // 重置上传状态，允许重新上传
+      uploadStatus.value[statusKey] = 'ready'
+      // 更新进度（因为之前成功的文件被替换了）
+      updateUploadedFilesCount()
+    } else {
+      uploadStatus.value[statusKey] = 'ready'
+    }
+    
     // 更新答题状态为"进行中"
     currentAnswerStatus.value = 'in_progress'
+    
+    // 选择文件后立即上传
+    await uploadAnswerFile(index)
   } else {
     const arrayIndex = questionId * 100 + index
     selectedFiles.value[arrayIndex] = null
     uploadStatus.value[questionId + '_' + index] = null
+    // 文件被取消，更新进度
+    updateUploadedFilesCount()
   }
 }
 
@@ -553,7 +569,7 @@ const saveCurrentAnswerStatus = async () => {
   }
 }
 
-// 批量上传所有选中的文件
+// 批量上传所有选中的文件（交卷时调用）
 const uploadAllSelectedFiles = async () => {
   const questionId = currentQuestionData.value?.id
   if (!questionId) return
@@ -563,7 +579,9 @@ const uploadAllSelectedFiles = async () => {
 
   for (let index = 0; index < currentRequiredFiles.length; index++) {
     const file = getSelectedFile(questionId, index)
-    if (file) {
+    const statusKey = questionId + '_' + index
+    // 只上传未上传过的文件（状态不是'success'的文件）
+    if (file && uploadStatus.value[statusKey] !== 'success') {
       uploadPromises.push(uploadAnswerFile(index))
     }
   }
@@ -571,7 +589,7 @@ const uploadAllSelectedFiles = async () => {
   if (uploadPromises.length > 0) {
     try {
       await Promise.all(uploadPromises)
-      alert('所有文件上传完成！')
+      // 移除批量上传完成的提示
     } catch (error) {
       console.error('批量上传失败:', error)
       alert('部分文件上传失败，请检查后重试。')
@@ -632,17 +650,12 @@ const uploadAnswerFile = async (index) => {
 
     if (response.ok && result.code === 20000) {
       uploadStatus.value[currentQuestionData.value.id + '_' + index] = 'success'
-      alert(`文件 ${file.name} 上传成功！`)
-      selectedFiles.value[questionId * 100 + index] = null // 清空已上传的文件
-      // 清空文件输入框
-      const fileInput = document.getElementById(`file-${questionId}-${index}`)
-      if (fileInput) {
-        fileInput.value = ''
-      }
       
-      // 重新计算已上传文件计数
-      // 基于当前题目的实际上传状态重新计算
+      // 更新文件上传进度
       updateUploadedFilesCount()
+      
+      // 不清空文件选择，保留文件名显示
+      // 用户可以重新选择文件来替换已上传的文件
       
       // 检查是否所有文件都已上传完成
       if (isCurrentQuestionComplete.value) {
