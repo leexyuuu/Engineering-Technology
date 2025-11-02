@@ -61,12 +61,6 @@
 
         <!-- 答案上传内容 -->
         <div v-if="activeTab === 'upload'" class="upload-content">
-          <div class="instructions">
-            <p>考生文件夹可以保存在桌面。</p>
-            <p>jupyter notebook 工作目录:虚拟机环境中的D:\jupyter_notebook.</p>
-            <p>jupyter notebook 打开方式:在终端中输入jupyter notebook启动。</p>
-          </div>
-
           <div class="upload-table">
             <table>
               <thead>
