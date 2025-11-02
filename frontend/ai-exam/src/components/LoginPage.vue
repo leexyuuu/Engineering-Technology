@@ -247,7 +247,7 @@ const handleLogin = async () => {
   font-size: 28px;
   font-weight: bold;
   margin: 0 0 10px 0;
-  color: #FF3355;
+  color: white;
 }
 
 .exam-title {
