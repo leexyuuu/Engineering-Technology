@@ -80,9 +80,25 @@
                       :id="'file-' + currentQuestionData?.id + '-' + index" 
                       style="display: none;" 
                       @change="onFileSelected($event, index)"
+                      :disabled="getUploadStatus(currentQuestionData?.id, index) === 'uploading'"
                     />
-                    <label :for="'file-' + currentQuestionData?.id + '-' + index" class="file-input-label">
-                      {{ getSelectedFile(currentQuestionData?.id, index) ? '✓ 已选择' : '选择文件' }}
+                    <label 
+                      :for="'file-' + currentQuestionData?.id + '-' + index" 
+                      class="file-input-label"
+                      :class="{ 
+                        'uploading': getUploadStatus(currentQuestionData?.id, index) === 'uploading',
+                        'success': getUploadStatus(currentQuestionData?.id, index) === 'success'
+                      }"
+                    >
+                      <span v-if="getUploadStatus(currentQuestionData?.id, index) === 'uploading'">
+                        <span class="loading-spinner">⟳</span> 上传中...
+                      </span>
+                      <span v-else-if="getUploadStatus(currentQuestionData?.id, index) === 'success'">
+                        ✓ 上传成功
+                      </span>
+                      <span v-else>
+                        上传文件
+                      </span>
                     </label>
                     <div v-if="getSelectedFile(currentQuestionData?.id, index)" class="selected-file">
                       📎 {{ getSelectedFile(currentQuestionData?.id, index).name }}
@@ -279,11 +295,19 @@ const downloadFiles = computed(() => {
 const selectedFiles = ref([])
 const uploadStatus = ref({}) // 记录每个文件的上传状态
 const questionUploadCounts = ref({}) // 按题目分别记录上传计数
+const hasShownUploadWarning = ref(false) // 标记是否已显示过未上传文件的提示
 
 // 获取选中文件的辅助函数
 const getSelectedFile = (questionId, index) => {
   const arrayIndex = questionId * 100 + index
   return selectedFiles.value[arrayIndex]
+}
+
+// 获取上传状态的辅助函数
+const getUploadStatus = (questionId, index) => {
+  if (!questionId) return null
+  const statusKey = questionId + '_' + index
+  return uploadStatus.value[statusKey] || null
 }
 
 
@@ -382,7 +406,86 @@ const goToNextQuestion = async () => {
   }
 }
 
+// 检查所有题目中未上传的文件
+const checkUnuploadedFiles = () => {
+  if (!examData.value?.questions) return []
+  
+  const unuploadedFiles = []
+  
+  for (const question of examData.value.questions) {
+    const questionId = question.id
+    let requiredFiles = []
+    
+    // 检查是否有required_files（多文件题）
+    if (question.required_files) {
+      try {
+        requiredFiles = JSON.parse(question.required_files)
+      } catch (e) {
+        console.error('解析required_files失败:', e)
+      }
+    }
+    // 检查是否有requires_file（单文件题）
+    else if (question.requires_file) {
+      requiredFiles = [{ description: '上传文件' }]
+    }
+    
+    // 检查每个必需文件的上传状态
+    for (let index = 0; index < requiredFiles.length; index++) {
+      const statusKey = questionId + '_' + index
+      const fileStatus = uploadStatus.value[statusKey]
+      
+      // 如果状态不是'success'，说明文件未上传
+      if (fileStatus !== 'success') {
+        const fileDescription = requiredFiles[index]?.description || `文件 ${index + 1}`
+        unuploadedFiles.push({
+          questionOrder: question.order,
+          questionId: questionId,
+          fileIndex: index,
+          fileDescription: fileDescription
+        })
+      }
+    }
+  }
+  
+  return unuploadedFiles
+}
+
 const submitExam = async () => {
+  // 第一次检查：如果有未上传的文件，显示提示
+  if (!hasShownUploadWarning.value) {
+    const unuploadedFiles = checkUnuploadedFiles()
+    
+    if (unuploadedFiles.length > 0) {
+      // 构建提示信息
+      let message = '检测到以下题目还有文件未上传：\n\n'
+      
+      // 按题目分组
+      const groupedByQuestion = {}
+      unuploadedFiles.forEach(item => {
+        if (!groupedByQuestion[item.questionOrder]) {
+          groupedByQuestion[item.questionOrder] = []
+        }
+        groupedByQuestion[item.questionOrder].push(item.fileDescription)
+      })
+      
+      // 格式化提示信息
+      Object.keys(groupedByQuestion).forEach(questionOrder => {
+        const files = groupedByQuestion[questionOrder]
+        message += `第${questionOrder}题：\n`
+        files.forEach(fileDesc => {
+          message += `  - ${fileDesc}\n`
+        })
+      })
+      
+      message += '\n请上传完所有文件后再交卷。\n\n如果确认要交卷，请再次点击"交卷"按钮。'
+      
+      alert(message)
+      hasShownUploadWarning.value = true
+      return // 第一次不提交，只显示提示
+    }
+  }
+  
+  // 第二次点击（或没有未上传文件时），确认后提交
   if (confirm('确定要交卷吗？交卷后将无法修改答案。')) {
     try {
       const token = localStorage.getItem('studentToken')
@@ -403,7 +506,7 @@ const submitExam = async () => {
       const examData = JSON.parse(examQuestionsData)
       const examId = examData.exam.id
 
-      // 先批量上传所有选中的文件
+      // 先批量上传所有选中的文件（可能还有未上传的）
       await uploadAllSelectedFiles()
 
       // 调用交卷接口
@@ -425,6 +528,8 @@ const submitExam = async () => {
         // 清除本地存储的考试数据
         localStorage.removeItem('examQuestions')
         localStorage.removeItem('studentData')
+        // 重置警告标记
+        hasShownUploadWarning.value = false
         // 跳转回登录页面
         router.push('/')
       } else {
@@ -444,11 +549,18 @@ const submitExam = async () => {
           errorMessage = result.message || '未知错误'
         }
         alert(`交卷失败: ${errorMessage}`)
+        // 提交失败时重置警告标记，允许再次检查
+        hasShownUploadWarning.value = false
       }
     } catch (error) {
       console.error('交卷请求失败:', error)
       alert('交卷失败，请检查网络连接后重试。')
+      // 提交失败时重置警告标记，允许再次检查
+      hasShownUploadWarning.value = false
     }
+  } else {
+    // 用户取消了确认，重置警告标记，允许再次检查
+    hasShownUploadWarning.value = false
   }
 }
 
@@ -1168,6 +1280,33 @@ onUnmounted(() => {
 
 .file-input-label:hover {
   background: #E62A4A;
+}
+
+.file-input-label.uploading {
+  background: #ffc107;
+  color: #000;
+  cursor: not-allowed;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.file-input-label.success {
+  background: #28a745;
+  cursor: default;
+}
+
+.loading-spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .upload-btn {
