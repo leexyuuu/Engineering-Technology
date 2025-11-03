@@ -1,15 +1,15 @@
 <template>
   <div class="app-container">
     <h3>考试：{{ examName }}</h3>
-    
+
     <!-- 添加Excel导入功能 -->
     <div class="import-section" style="margin-bottom: 20px;">
-      <el-button type="primary" @click="showImportDialog = true" icon="el-icon-upload">
+      <el-button type="primary" icon="el-icon-upload" @click="showImportDialog = true">
         导入学生列表
       </el-button>
     </div>
 
-    <el-table :data="studentList" style="width: 100%" v-loading="loading">
+    <el-table v-loading="loading" :data="studentList" style="width: 100%">
       <el-table-column prop="id" label="学生ID" width="80" />
       <el-table-column prop="name" label="学生姓名" />
       <el-table-column prop="phone" label="手机号" />
@@ -36,9 +36,18 @@
           {{ scope.row.duration_minutes ? scope.row.duration_minutes + '分钟' : '-' }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180">
+      <el-table-column label="操作" width="280">
         <template slot-scope="scope">
           <el-button size="mini" @click="handleViewDetail(scope.row)">查看详情</el-button>
+          <el-button
+            size="mini"
+            type="success"
+            icon="el-icon-download"
+            :loading="scope.row.downloading"
+            @click="handleDownloadFiles(scope.row)"
+          >
+            下载文件
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -70,26 +79,26 @@
             <li>导入的学生会自动绑定到当前考试</li>
           </ul>
         </div>
-        
-        <upload-excel-component 
-          :on-success="handleImportSuccess" 
-          :before-upload="beforeImportUpload"
+
+        <upload-excel-component
           ref="uploadExcel"
+          :on-success="handleImportSuccess"
+          :before-upload="beforeImportUpload"
         />
         <div slot="footer" class="dialog-footer">
-        <el-button 
-       
-        style="float: right;"
-          type="primary" 
-          @click="confirmImport" 
-          :loading="importLoading"
-          :disabled="importPreview.length === 0"
-        >
-          确认导入
-        </el-button>
-         <el-button         style="float: right; margin-right: 20px;" @click="showImportDialog = false">取消</el-button>
-       
-      </div>
+          <el-button
+
+            style="float: right;"
+            type="primary"
+            :loading="importLoading"
+            :disabled="importPreview.length === 0"
+            @click="confirmImport"
+          >
+            确认导入
+          </el-button>
+          <el-button style="float: right; margin-right: 20px;" @click="showImportDialog = false">取消</el-button>
+
+        </div>
         <div v-if="importPreview.length > 0" class="import-preview">
           <h4>导入预览（共{{ importPreview.length }}条记录）：</h4>
           <el-table :data="importPreview" border style="width: 100%; margin-top: 10px;">
@@ -105,14 +114,13 @@
           </el-table>
         </div>
       </div>
-      
-   
+
     </el-dialog>
   </div>
 </template>
 
 <script>
-import { fetchExamStudentList, fetchExam, importStudentsToExam } from '@/api/exam'
+import { fetchExamStudentList, fetchExam, importStudentsToExam, downloadStudentFiles } from '@/api/exam'
 import UploadExcelComponent from '@/components/UploadExcel/index.vue'
 
 export default {
@@ -130,7 +138,8 @@ export default {
       examName: '',
       showImportDialog: false,
       importPreview: [],
-      importLoading: false
+      importLoading: false,
+      downloadingStudentIds: new Set() // 用于跟踪正在下载的学生ID
     }
   },
   created() {
@@ -177,7 +186,7 @@ export default {
       // 跳转到学生考试详情页面
       this.$router.push({
         path: `/exam/examdetail/${this.exam_id}/${row.id}`,
-        query: { exam_name: this.examName,studentName:row.name,studentPhone:row.phone }
+        query: { exam_name: this.examName, studentName: row.name, studentPhone: row.phone }
       })
     },
     beforeImportUpload(file) {
@@ -191,21 +200,21 @@ export default {
     handleImportSuccess({ results, header }) {
       // 处理Excel数据
       this.importPreview = []
-      
+
       // 查找姓名和电话列
       const nameIndex = header.findIndex(h => ['姓名', 'name', '学生姓名'].includes(h))
       const phoneIndex = header.findIndex(h => ['电话', 'phone', '手机号', '电话号码'].includes(h))
-      
+
       if (nameIndex === -1 || phoneIndex === -1) {
         this.$message.error('Excel文件必须包含姓名和电话号码列')
         return
       }
-      
+
       // 处理每一行数据
       results.forEach((row, index) => {
         const name = row[header[nameIndex]]
         const phone = row[header[phoneIndex]]
-        
+
         if (!name || !phone) {
           this.importPreview.push({
             name: name || '空',
@@ -215,7 +224,7 @@ export default {
           })
           return
         }
-        
+
         // 验证电话号码格式
         const phoneRegex = /^1[3-9]\d{9}$/
         if (!phoneRegex.test(phone)) {
@@ -227,37 +236,36 @@ export default {
           })
           return
         }
-        
+
         this.importPreview.push({
           name,
           phone,
           status: 'success'
         })
       })
-      
+
       if (this.importPreview.length === 0) {
         this.$message.error('没有找到有效的数据')
       }
     },
     confirmImport() {
       const validData = this.importPreview.filter(item => item.status === 'success')
-      
+
       if (validData.length === 0) {
         this.$message.error('没有有效的数据可以导入')
         return
       }
-      
+
       this.importLoading = true
-      const students= validData.map(item => ({
-          name: item.name,
-          phone: item.phone.toString()
-        }))
-      const params={
-          exam_id: parseInt(this.exam_id),
-          student_strs: JSON.stringify(students)
+      const students = validData.map(item => ({
+        name: item.name,
+        phone: item.phone.toString()
+      }))
+      const params = {
+        exam_id: parseInt(this.exam_id),
+        student_strs: JSON.stringify(students)
       }
-      
-      
+
       // 调用导入接口
       importStudentsToExam(params).then(res => {
         this.$message.success(`成功导入 ${res.data.success_count} 名学生`)
@@ -269,6 +277,32 @@ export default {
       }).finally(() => {
         this.importLoading = false
       })
+    },
+    handleDownloadFiles(row) {
+      // 检查是否正在下载
+      if (this.downloadingStudentIds.has(row.id)) {
+        return
+      }
+
+      // 标记为正在下载
+      this.$set(row, 'downloading', true)
+      this.downloadingStudentIds.add(row.id)
+
+      // 调用下载接口
+      downloadStudentFiles(this.exam_id, row.id)
+        .then(() => {
+          this.$message.success(`正在下载 ${row.name} 的文件`)
+        })
+        .catch(error => {
+          console.error('下载失败:', error)
+          const errorMsg = error.response?.data?.detail || error.message || '下载失败'
+          this.$message.error(`下载失败: ${errorMsg}`)
+        })
+        .finally(() => {
+          // 取消下载状态
+          this.$set(row, 'downloading', false)
+          this.downloadingStudentIds.delete(row.id)
+        })
     }
   }
 }
@@ -318,4 +352,4 @@ export default {
   margin: 0 0 10px 0;
   color: #303133;
 }
-</style> 
+</style>
