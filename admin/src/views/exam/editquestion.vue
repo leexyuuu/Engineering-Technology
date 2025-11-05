@@ -205,7 +205,6 @@
                   :on-success="(res) => handleMaterialFileSuccess(res, idx)"
                   :on-error="handleUploadError"
                   :show-file-list="false"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
                 >
                   <el-button size="mini" type="primary">选择文件</el-button>
                 </el-upload>
