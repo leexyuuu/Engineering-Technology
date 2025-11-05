@@ -58,6 +58,12 @@
   font-weight: normal;
 }
 
+/* 恢复strong和b标签的粗体样式 */
+strong,
+b {
+  font-weight: bold;
+}
+
 body {
   min-height: 100vh;
   color: var(--color-text);

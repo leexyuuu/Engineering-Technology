@@ -61,6 +61,11 @@
 
         <!-- 答案上传内容 -->
         <div v-if="activeTab === 'upload'" class="upload-content">
+          <!-- 注意事项 -->
+          <div v-if="currentQuestionData?.file_description" class="instructions">
+            <div class="instructions-content markdown-content" v-html="renderedNoticeContent"></div>
+          </div>
+          
           <div class="upload-table">
             <table>
               <thead>
@@ -213,25 +218,108 @@ const uploadedFilesCount = computed(() => {
 const renderMarkdown = (content) => {
   if (!content) return ''
   
-  // 先处理通用的加粗语法
-  let processedContent = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+  // 按行分割内容
+  const lines = content.split('\n')
+  const processedLines = []
   
-  // 然后处理其他格式
-  return processedContent
-    // 处理列表项
-    .replace(/^[-*]\s*(.*)$/gim, '<div class="list-item">- $1</div>')
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i]
+    const trimmedLine = line.trim()
+    
+    // 空行处理：保留为换行标记
+    if (!trimmedLine) {
+      processedLines.push('<br>')
+      continue
+    }
+    
+    line = trimmedLine
+    
+    // 处理标题
+    if (line.startsWith('# ')) {
+      processedLines.push(`<h1>${processInlineFormatting(line.substring(2))}</h1>`)
+      continue
+    }
+    if (line.startsWith('## ')) {
+      processedLines.push(`<h2>${processInlineFormatting(line.substring(3))}</h2>`)
+      continue
+    }
+    if (line.startsWith('### ')) {
+      processedLines.push(`<h3>${processInlineFormatting(line.substring(4))}</h3>`)
+      continue
+    }
+    
+    // 处理列表项（以 - 或 * 开头，但不是粗体）
+    if (/^[-*]\s+/.test(line) && !line.startsWith('**')) {
+      line = line.replace(/^[-*]\s+/, '')
+      processedLines.push(`<div class="list-item">- ${processInlineFormatting(line)}</div>`)
+      continue
+    }
+    
     // 处理普通段落
-    .replace(/^([^-*].*)$/gim, '<div class="paragraph">$1</div>')
-    // 清理空行
-    .replace(/\n\s*\n/g, '')
-    // 清理多余的div
-    .replace(/<div class="paragraph"><\/div>/g, '');
+    processedLines.push(`<div class="paragraph">${processInlineFormatting(line)}</div>`)
+  }
+  
+  // 合并并清理
+  let result = processedLines.join('')
+  
+  // 清理连续的<br>标签，最多保留一个
+  result = result.replace(/<br><br>+/g, '<br>')
+  
+  // 清理空的段落div
+  result = result.replace(/<div class="paragraph"><\/div>/g, '')
+  
+  // 清理段落div之间的<br>
+  result = result.replace(/<\/div><br><div class="paragraph">/g, '</div><div class="paragraph">')
+  result = result.replace(/<\/div><br><div class="list-item">/g, '</div><div class="list-item">')
+  
+  return result
 }
 
-// 渲染后的内容
+// 处理行内格式（粗体、斜体、代码等）
+function processInlineFormatting(text) {
+  if (!text) return ''
+  
+  // 先处理代码块（反引号包裹），使用占位符避免代码块内的内容被处理
+  const codePlaceholders = []
+  let placeholderIndex = 0
+  
+  text = text.replace(/`([^`]+)`/g, (match, code) => {
+    const placeholder = `__CODE_PLACEHOLDER_${placeholderIndex}__`
+    codePlaceholders.push(`<code>${code}</code>`)
+    placeholderIndex++
+    return placeholder
+  })
+  
+  // 处理粗体（**粗体**），必须在斜体之前处理
+  // 使用全局匹配，确保所有粗体都被处理
+  // 匹配 **任意字符** 的模式，支持中文、英文、数字等
+  text = text.replace(/\*\*([^*]+?)\*\*/g, (match, content) => {
+    return `<strong>${content}</strong>`
+  })
+  
+  // 处理斜体（*斜体*）
+  // 由于粗体已经处理完，剩余的单个*就是斜体
+  // 简单匹配：前后不是*的单个*
+  text = text.replace(/([^*<>]|^)\*([^*<>]+?)\*([^*<>]|$)/g, '$1<em>$2</em>$3')
+  
+  // 恢复代码块占位符
+  codePlaceholders.forEach((code, index) => {
+    text = text.replace(`__CODE_PLACEHOLDER_${index}__`, code)
+  })
+  
+  return text
+}
+
+// 渲染后的内容 - 题目描述
 const renderedContent = computed(() => {
   if (!currentQuestionData.value?.content) return ''
   return renderMarkdown(currentQuestionData.value.content)
+})
+
+// 渲染后的内容 - 注意事项
+const renderedNoticeContent = computed(() => {
+  if (!currentQuestionData.value?.file_description) return ''
+  return renderMarkdown(currentQuestionData.value.file_description)
 })
 
 // 计算当前题目数据
@@ -283,6 +371,7 @@ const downloadFiles = computed(() => {
     const materialFiles = JSON.parse(currentQuestionData.value.material_files)
     return materialFiles.map(file => ({
       name: file.name,
+      originalName: file.originalName || file.name, // 保留原始文件名
       url: file.url.startsWith('http') ? file.url : `/api${file.url}`
     }))
   } catch (e) {
@@ -574,18 +663,47 @@ const formatTime = (seconds) => {
 }
 
 // 下载文件方法
-const downloadFile = (file) => {
-  // 创建下载链接
-  const link = document.createElement('a')
-  link.href = file.url
-  link.download = file.name
-  link.style.display = 'none'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  
-  // 显示下载提示
-  alert(`文件 ${file.name} 开始下载`)
+const downloadFile = async (file) => {
+  try {
+    // 优先使用原始文件名,如果没有则使用name
+    const downloadFileName = file.originalName || file.name
+    
+    // 获取token用于下载认证
+    const token = localStorage.getItem('studentToken')
+    
+    // 使用fetch获取文件,这样可以更好地控制下载文件名
+    const response = await fetch(file.url, {
+      headers: token ? {
+        'Authorization': `Bearer ${token}`
+      } : {}
+    })
+    
+    if (!response.ok) {
+      throw new Error('下载失败')
+    }
+    
+    // 创建blob对象
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    
+    // 创建下载链接
+    const link = document.createElement('a')
+    link.href = url
+    link.download = downloadFileName // 使用原始文件名
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    
+    // 清理
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    // 显示下载提示
+    alert(`文件 ${downloadFileName} 开始下载`)
+  } catch (error) {
+    console.error('下载文件失败:', error)
+    alert(`下载文件失败: ${error.message}`)
+  }
 }
 
 // 文件选择事件
@@ -820,7 +938,6 @@ onUnmounted(() => {
   bottom: 0;
   display: flex;
   flex-direction: column;
-  background: blue; /* 调试背景色 */
   overflow: hidden;
 }
 
@@ -884,7 +1001,6 @@ onUnmounted(() => {
   margin: 0;
   padding: 0;
   width: 100%;
-  background: green; /* 调试背景色 */
 }
 
 .left-panel {
@@ -1215,20 +1331,100 @@ onUnmounted(() => {
 
 .instructions {
   background: #f8f9fa;
-  padding: 10px;
+  padding: 15px;
   border-radius: 6px;
   margin-bottom: 15px;
 }
 
-.instructions p {
-  margin: 0 0 6px 0;
-  color: #666;
-  font-size: 12px;
-  line-height: 1.4;
+.instructions-content {
+  line-height: 1.6;
+  color: #333;
+  font-size: 14px;
 }
 
-.instructions p:last-child {
-  margin-bottom: 0;
+.instructions-content .list-item {
+  margin: 4px 0 4px 20px;
+  color: #666;
+}
+
+.instructions-content .paragraph {
+  margin: 8px 0;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* 注意事项中的strong标签样式 - 必须使用!important覆盖全局样式 */
+.instructions-content .paragraph strong,
+.instructions-content.markdown-content .paragraph strong,
+.instructions-content strong,
+.instructions-content.markdown-content strong,
+.instructions .instructions-content strong,
+.instructions .instructions-content .paragraph strong {
+  font-weight: bold !important;
+  color: #FF3355 !important;
+  display: inline !important;
+  font-size: inherit !important;
+}
+
+.instructions-content h1 {
+  font-size: 20px;
+  font-weight: bold;
+  color: #FF3355;
+  margin: 0 0 12px 0;
+  border-bottom: 2px solid #FF3355;
+  padding-bottom: 6px;
+}
+
+.instructions-content h2 {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  margin: 16px 0 10px 0;
+}
+
+.instructions-content h3 {
+  font-size: 16px;
+  font-weight: bold;
+  color: #555;
+  margin: 14px 0 8px 0;
+}
+
+.instructions-content p {
+  margin: 0 0 10px 0;
+  text-align: justify;
+}
+
+.instructions-content em {
+  font-style: italic;
+  color: #666;
+}
+
+.instructions-content code {
+  background: #f4f4f4;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.instructions-content pre {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 10px;
+  margin: 10px 0;
+  overflow-x: auto;
+}
+
+.instructions-content pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.instructions-content li {
+  margin: 4px 0;
+  padding-left: 8px;
 }
 
 .upload-table {
