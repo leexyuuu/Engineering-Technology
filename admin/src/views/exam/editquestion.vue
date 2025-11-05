@@ -54,6 +54,52 @@
           </div>
         </div>
       </el-form-item>
+      <el-form-item label="注意事项">
+        <div class="markdown-editor-container">
+          <div class="editor-tabs">
+            <el-button
+              :class="['tab-btn', { active: noticeEditorMode === 'edit' }]"
+              size="small"
+              @click="noticeEditorMode = 'edit'"
+            >
+              编辑
+            </el-button>
+            <el-button
+              :class="['tab-btn', { active: noticeEditorMode === 'preview' }]"
+              size="small"
+              @click="noticeEditorMode = 'preview'"
+            >
+              预览
+            </el-button>
+          </div>
+
+          <div v-if="noticeEditorMode === 'edit'" class="editor-content">
+            <el-input
+              v-model="form.file_description"
+              type="textarea"
+              :autosize="{ minRows: 4, maxRows: 12 }"
+              placeholder="请输入注意事项，支持Markdown语法：
+
+# 标题1
+## 标题2
+**粗体文本**
+*斜体文本*
+`代码`
+- 列表项1
+- 列表项2
+
+支持表格：
+| 列1 | 列2 |
+|-----|-----|
+| 内容1 | 内容2 |"
+            />
+          </div>
+
+          <div v-if="noticeEditorMode === 'preview'" class="preview-content">
+            <div class="markdown-preview" v-html="renderedNoticeContent" />
+          </div>
+        </div>
+      </el-form-item>
       <el-form-item label="需要上传文件答题">
         <el-switch v-model="form.requires_file" />
       </el-form-item>
@@ -344,15 +390,22 @@ export default {
       uploadHeaders: {
         Authorization: localStorage.getItem('token') || ''
       },
-      editorMode: 'edit' // 编辑器模式：edit 或 preview
+      editorMode: 'edit', // 题目描述编辑器模式：edit 或 preview
+      noticeEditorMode: 'edit' // 注意事项编辑器模式：edit 或 preview
     }
   },
   computed: {
-    // Markdown渲染函数
+    // Markdown渲染函数 - 题目描述
     renderedContent() {
       if (!this.form.content) return ''
 
       return this.renderMarkdown(this.form.content)
+    },
+    // Markdown渲染函数 - 注意事项
+    renderedNoticeContent() {
+      if (!this.form.file_description) return ''
+
+      return this.renderMarkdown(this.form.file_description)
     }
   },
   created() {
