@@ -29,6 +29,7 @@
 
           <div v-if="editorMode === 'edit'" class="editor-content">
             <el-input
+              ref="contentTextarea"
               v-model="form.content"
               type="textarea"
               :autosize="{ minRows: 8, maxRows: 20 }"
@@ -45,7 +46,10 @@
 支持表格：
 | 列1 | 列2 |
 |-----|-----|
-| 内容1 | 内容2 |"
+| 内容1 | 内容2 |
+
+提示：可以直接粘贴图片，系统会自动上传并插入图片链接"
+              @paste.native="handlePasteImage($event, 'content')"
             />
           </div>
 
@@ -75,6 +79,7 @@
 
           <div v-if="noticeEditorMode === 'edit'" class="editor-content">
             <el-input
+              ref="noticeTextarea"
               v-model="form.file_description"
               type="textarea"
               :autosize="{ minRows: 4, maxRows: 12 }"
@@ -91,7 +96,10 @@
 支持表格：
 | 列1 | 列2 |
 |-----|-----|
-| 内容1 | 内容2 |"
+| 内容1 | 内容2 |
+
+提示：可以直接粘贴图片，系统会自动上传并插入图片链接"
+              @paste.native="handlePasteImage($event, 'notice')"
             />
           </div>
 
@@ -361,6 +369,7 @@ import {
   createExamQuestion,
   updateExamQuestion
 } from '@/api/exam'
+import axios from 'axios'
 function uuid() {
   return '_' + Math.random().toString(36).substr(2, 9)
 }
@@ -439,8 +448,24 @@ export default {
     renderMarkdown(content) {
       if (!content) return ''
 
-      // 先处理通用的加粗语法
-      const processedContent = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // 先处理图片语法（必须在其他处理之前）
+      let processedContent = content.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+        // 处理URL：如果已经是完整URL则直接使用，如果以/api开头则直接使用，否则添加/api前缀
+        let fullUrl = url
+        if (!url.startsWith('http')) {
+          if (url.startsWith('/api')) {
+            fullUrl = url
+          } else if (url.startsWith('/')) {
+            fullUrl = `/api${url}`
+          } else {
+            fullUrl = `/api/${url}`
+          }
+        }
+        return `<img src="${fullUrl}" alt="${alt || '图片'}" style="max-width: 100%; height: auto; margin: 10px 0;" />`
+      })
+
+      // 处理通用的加粗语法
+      processedContent = processedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
 
       // 然后处理其他格式
       return processedContent
@@ -452,6 +477,105 @@ export default {
         .replace(/\n\s*\n/g, '')
         // 清理多余的div
         .replace(/<div class="paragraph"><\/div>/g, '')
+    },
+    // 处理粘贴图片
+    async handlePasteImage(event, type) {
+      const clipboardData = event.clipboardData || window.clipboardData
+      if (!clipboardData) return
+
+      const items = clipboardData.items
+      if (!items) return
+
+      // 查找图片类型的数据
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          event.preventDefault() // 阻止默认粘贴行为
+
+          const file = items[i].getAsFile()
+          if (!file) continue
+
+          // 显示上传提示
+          const loading = this.$loading({
+            lock: true,
+            text: '正在上传图片...',
+            spinner: 'el-icon-loading',
+            background: 'rgba(0, 0, 0, 0.7)'
+          })
+
+          try {
+            // 上传图片
+            const formData = new FormData()
+            formData.append('file', file)
+
+            const token = localStorage.getItem('token') || ''
+            const response = await axios.post('/api/exam/upload-file', formData, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'multipart/form-data'
+              }
+            })
+
+            if (response.data && response.data.code === 20000) {
+              const imageUrl = response.data.data.url
+              // 后端返回的是 /uploads/xxx.png，保存时直接使用这个路径
+              // 在渲染时会自动添加 /api 前缀
+              const imageMarkdown = `![图片](${imageUrl})`
+
+              // 获取当前文本和光标位置
+              const textareaRef = type === 'content' ? this.$refs.contentTextarea : this.$refs.noticeTextarea
+              if (textareaRef) {
+                const textarea = textareaRef.$el.querySelector('textarea')
+                if (textarea) {
+                  const start = textarea.selectionStart
+                  const end = textarea.selectionEnd
+                  const text = type === 'content' ? this.form.content : this.form.file_description
+
+                  // 在光标位置插入图片 markdown
+                  const newText = text.substring(0, start) + imageMarkdown + text.substring(end)
+
+                  if (type === 'content') {
+                    this.form.content = newText
+                  } else {
+                    this.form.file_description = newText
+                  }
+
+                  // 设置光标位置到插入内容之后
+                  this.$nextTick(() => {
+                    const newPosition = start + imageMarkdown.length
+                    textarea.setSelectionRange(newPosition, newPosition)
+                    textarea.focus()
+                  })
+                } else {
+                  // 如果没有找到 textarea，直接追加到末尾
+                  if (type === 'content') {
+                    this.form.content += (this.form.content ? '\n' : '') + imageMarkdown
+                  } else {
+                    this.form.file_description += (this.form.file_description ? '\n' : '') + imageMarkdown
+                  }
+                }
+              } else {
+                // 如果没有找到 ref，直接追加到末尾
+                if (type === 'content') {
+                  this.form.content += (this.form.content ? '\n' : '') + imageMarkdown
+                } else {
+                  this.form.file_description += (this.form.file_description ? '\n' : '') + imageMarkdown
+                }
+              }
+
+              this.$message.success('图片上传成功')
+            } else {
+              this.$message.error('图片上传失败')
+            }
+          } catch (error) {
+            console.error('上传图片失败:', error)
+            this.$message.error('图片上传失败: ' + (error.message || '未知错误'))
+          } finally {
+            loading.close()
+          }
+
+          break
+        }
+      }
     },
 
     addSubQuestion() {

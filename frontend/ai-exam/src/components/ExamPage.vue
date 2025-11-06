@@ -275,9 +275,25 @@ const renderMarkdown = (content) => {
   return result
 }
 
-// 处理行内格式（粗体、斜体、代码等）
+// 处理行内格式（粗体、斜体、代码、图片等）
 function processInlineFormatting(text) {
   if (!text) return ''
+  
+  // 先处理图片（![alt](url)），必须在其他处理之前
+  text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+    // 处理URL：如果已经是完整URL则直接使用，如果以/api开头则直接使用，否则添加/api前缀
+    let fullUrl = url
+    if (!url.startsWith('http')) {
+      if (url.startsWith('/api')) {
+        fullUrl = url
+      } else if (url.startsWith('/')) {
+        fullUrl = `/api${url}`
+      } else {
+        fullUrl = `/api/${url}`
+      }
+    }
+    return `<img src="${fullUrl}" alt="${alt || '图片'}" style="max-width: 100%; height: auto; margin: 10px 0;" />`
+  })
   
   // 先处理代码块（反引号包裹），使用占位符避免代码块内的内容被处理
   const codePlaceholders = []
