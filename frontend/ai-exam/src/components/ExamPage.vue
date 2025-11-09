@@ -78,7 +78,7 @@
               <tbody>
                 <tr v-for="(file, index) in currentQuestionRequiredFiles" :key="index">
                   <td>{{ index + 1 }}</td>
-                  <td>{{ file.description || `上传文件 ${index + 1}` }}</td>
+                  <td>{{ file.name || file.description || `上传文件 ${index + 1}` }}</td>
                   <td>
                     <input 
                       type="file" 
@@ -194,9 +194,10 @@ const currentQuestion = ref(1)
 const activeTab = ref('upload')
 
 // 倒计时相关
-const totalTime = 90 * 60 // 1小时30分钟 = 90分钟 = 5400秒
-const remainingTime = ref(totalTime)
+const remainingTime = ref(0)
 let timer = null
+let examStartTime = null // 考试开始时间（时间戳）
+let hasShownTenMinuteWarning = false // 是否已显示10分钟提醒
 
 // 接口数据
 const examData = ref(null)
@@ -541,7 +542,7 @@ const checkUnuploadedFiles = () => {
       
       // 如果状态不是'success'，说明文件未上传
       if (fileStatus !== 'success') {
-        const fileDescription = requiredFiles[index]?.description || `文件 ${index + 1}`
+        const fileDescription = requiredFiles[index]?.name || requiredFiles[index]?.description || `文件 ${index + 1}`
         unuploadedFiles.push({
           questionOrder: question.order,
           questionId: questionId,
@@ -555,9 +556,9 @@ const checkUnuploadedFiles = () => {
   return unuploadedFiles
 }
 
-const submitExam = async () => {
-  // 第一次检查：如果有未上传的文件，显示提示
-  if (!hasShownUploadWarning.value) {
+const submitExam = async (skipConfirm = false) => {
+  // 第一次检查：如果有未上传的文件，显示提示（自动交卷时跳过）
+  if (!skipConfirm && !hasShownUploadWarning.value) {
     const unuploadedFiles = checkUnuploadedFiles()
     
     if (unuploadedFiles.length > 0) {
@@ -590,8 +591,8 @@ const submitExam = async () => {
     }
   }
   
-  // 第二次点击（或没有未上传文件时），确认后提交
-  if (confirm('确定要交卷吗？交卷后将无法修改答案。')) {
+  // 第二次点击（或没有未上传文件时），确认后提交（自动交卷时跳过确认）
+  if (skipConfirm || confirm('确定要交卷吗？交卷后将无法修改答案。')) {
     try {
       const token = localStorage.getItem('studentToken')
       if (!token) {
@@ -633,6 +634,10 @@ const submitExam = async () => {
         // 清除本地存储的考试数据
         localStorage.removeItem('examQuestions')
         localStorage.removeItem('studentData')
+        // 清除开始时间记录
+        if (examData.value?.exam?.id) {
+          localStorage.removeItem(`exam_start_time_${examData.value.exam.id}`)
+        }
         // 重置警告标记
         hasShownUploadWarning.value = false
         // 跳转回登录页面
@@ -915,24 +920,60 @@ const uploadAnswerFile = async (index) => {
   }
 }
 
+// 初始化倒计时
+const initTimer = () => {
+  if (!examData.value?.exam?.duration_minutes) return
+  
+  const durationMinutes = examData.value.exam.duration_minutes
+  const storageKey = `exam_start_time_${examData.value.exam.id}`
+  
+  // 获取或设置开始时间
+  const savedStartTime = localStorage.getItem(storageKey)
+  if (savedStartTime) {
+    examStartTime = parseInt(savedStartTime)
+  } else {
+    examStartTime = Date.now()
+    localStorage.setItem(storageKey, examStartTime.toString())
+  }
+  
+  // 计算初始剩余时间
+  updateRemainingTime(durationMinutes)
+  
+  // 开始倒计时
+  startTimer(durationMinutes)
+}
+
+// 更新剩余时间
+const updateRemainingTime = (durationMinutes) => {
+  if (!examStartTime) return
+  const elapsed = Math.floor((Date.now() - examStartTime) / 1000)
+  const totalSeconds = durationMinutes * 60
+  remainingTime.value = Math.max(0, totalSeconds - elapsed)
+}
+
 // 开始倒计时
-const startTimer = () => {
+const startTimer = (durationMinutes) => {
   timer = setInterval(() => {
-    if (remainingTime.value > 0) {
-      remainingTime.value--
-    } else {
+    updateRemainingTime(durationMinutes)
+    // 考试结束前10分钟提醒
+    if (remainingTime.value <= 600 && remainingTime.value > 0 && !hasShownTenMinuteWarning) {
+      hasShownTenMinuteWarning = true
+      alert('考试即将结束，剩余时间不足10分钟，请尽快完成答题并交卷！')
+    }
+    if (remainingTime.value <= 0) {
       // 时间到，自动交卷
       clearInterval(timer)
       alert('考试时间已到，系统将自动交卷！')
-      router.push('/')
+      submitExam(true) // 自动交卷，跳过确认
     }
   }, 1000)
 }
 
 // 组件挂载时开始倒计时和加载数据
-onMounted(() => {
-  startTimer()
-  loadExamData()
+onMounted(async () => {
+  await loadExamData()
+  // 初始化倒计时（需要在加载考试数据后）
+  initTimer()
   // 初始化当前题目状态
   initializeCurrentQuestionStatus()
 })

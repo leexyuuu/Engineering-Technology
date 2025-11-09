@@ -2,17 +2,18 @@
   <div class="app-container">
     <h3>考试：{{ examName }}</h3>
     <el-button type="primary" @click="handleAdd">添加题目</el-button>
-    <el-table :data="questionList" style="width: 100%" v-loading="loading">
+    <el-table v-loading="loading" :data="questionList" style="width: 100%">
       <el-table-column prop="id" label="id" width="80" />
-        <el-table-column prop="order" label="排序" width="80" />
+      <el-table-column prop="order" label="排序" width="80" />
       <el-table-column prop="content" label="描述" />
       <el-table-column label="操作" width="180">
         <template slot-scope="scope">
+          <el-button size="mini" type="primary" @click="handleEdit(scope.row)">编辑</el-button>
           <el-button size="mini" type="danger" @click="handleDelete(scope.row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
-   
+
   </div>
 </template>
 
@@ -42,7 +43,7 @@ export default {
       this.loading = true
       fetchExamQuestionList(this.exam_id).then(res => {
         this.questionList = res.data.items || []
-        console.log("this.questionList="+this.questionList)
+        console.log('this.questionList=' + this.questionList)
         this.loading = false
       }).catch(() => { this.loading = false })
     },
@@ -62,4 +63,4 @@ export default {
     }
   }
 }
-</script> 
+</script>
