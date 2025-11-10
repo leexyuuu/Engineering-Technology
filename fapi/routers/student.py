@@ -583,18 +583,64 @@ def get_exam_result(
     if not student_exam:
         raise HTTPException(status_code=404, detail="Submitted exam not found")
     
-    # 获取考试的所有题目并随机选择5道题
+    # 获取考试的所有题目并按章节规则选择题目
+    # 题目架构对应关系：
+    # 第一章：1.1.1-1.1.5 (5道) + 1.2.1-1.2.5 (5道) = order 1-10，共10道
+    # 第二章：2.1.1-2.1.5 (前5道, order 11-15) + 2.2.1-2.2.5 (后5道, order 16-20) = 共10道
+    # 第三章：3.1.1-3.1.5 (前5道, order 21-25) + 3.2.1-3.2.5 (后5道, order 26-30) = 共10道
+    # 第四章：4.1.1-4.1.5 (5道) + 4.2.1-4.2.5 (5道) = order 31-40，共10道
     all_questions = db.query(Question).filter(
         Question.exam_id == exam_id
     ).all()
     
-    if len(all_questions) >= 5:
-        questions = random.sample(all_questions, 5)
-        # 重新排序
-        for i, question in enumerate(questions):
-            question.order = i + 1
-    else:
-        questions = all_questions
+    # 按章节规则分组题目
+    chapter1 = [q for q in all_questions if 1 <= q.order <= 10]  # 第一章：1.1.1-1.2.5
+    chapter2_part1 = [q for q in all_questions if 11 <= q.order <= 15]  # 第二章前5道：2.1.1-2.1.5
+    chapter2_part2 = [q for q in all_questions if 16 <= q.order <= 20]  # 第二章后5道：2.2.1-2.2.5
+    chapter3_part1 = [q for q in all_questions if 21 <= q.order <= 25]  # 第三章前5道：3.1.1-3.1.5
+    chapter3_part2 = [q for q in all_questions if 26 <= q.order <= 30]  # 第三章后5道：3.2.1-3.2.5
+    chapter4 = [q for q in all_questions if 31 <= q.order <= 40]  # 第四章：4.1.1-4.2.5
+    
+    # 从每组随机选择指定数量的题目
+    selected_questions = []
+    
+    # 第一章：10道题随机出1道
+    if chapter1:
+        selected_questions.append(random.choice(chapter1))
+    
+    # 第二章：前5道题随机出1道，后5道题随机出1道
+    if chapter2_part1:
+        selected_questions.append(random.choice(chapter2_part1))
+    if chapter2_part2:
+        selected_questions.append(random.choice(chapter2_part2))
+    
+    # 第三章：前5道题随机出1道，后5道题随机出1道
+    if chapter3_part1:
+        selected_questions.append(random.choice(chapter3_part1))
+    if chapter3_part2:
+        selected_questions.append(random.choice(chapter3_part2))
+    
+    # 第四章：10道题随机出1道
+    if chapter4:
+        selected_questions.append(random.choice(chapter4))
+    
+    # 如果按规则选择的题目数量不足，从剩余题目中补充
+    if len(selected_questions) < 6 and len(all_questions) > len(selected_questions):
+        remaining_questions = [q for q in all_questions if q not in selected_questions]
+        needed = 6 - len(selected_questions)
+        if len(remaining_questions) >= needed:
+            selected_questions.extend(random.sample(remaining_questions, needed))
+        else:
+            selected_questions.extend(remaining_questions)
+    
+    # 如果仍然没有题目，使用所有题目
+    if not selected_questions:
+        selected_questions = all_questions
+    
+    # 重新排序（1-6）
+    questions = selected_questions[:6]  # 最多6道题
+    for i, question in enumerate(questions):
+        question.order = i + 1
     
     # 获取学生的所有答案并映射到字典（question_id -> answer）
     student_answers = db.query(StudentAnswer).filter(
