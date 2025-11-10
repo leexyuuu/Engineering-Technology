@@ -931,6 +931,14 @@ const initTimer = () => {
   const savedStartTime = localStorage.getItem(storageKey)
   if (savedStartTime) {
     examStartTime = parseInt(savedStartTime)
+    // 检查剩余时间是否已过期
+    const elapsed = Math.floor((Date.now() - examStartTime) / 1000)
+    const totalSeconds = durationMinutes * 60
+    // 如果时间已过期，清除旧时间，重新开始
+    if (elapsed >= totalSeconds) {
+      examStartTime = Date.now()
+      localStorage.setItem(storageKey, examStartTime.toString())
+    }
   } else {
     examStartTime = Date.now()
     localStorage.setItem(storageKey, examStartTime.toString())
