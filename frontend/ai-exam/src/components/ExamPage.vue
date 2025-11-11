@@ -416,6 +416,124 @@ const getUploadStatus = (questionId, index) => {
   return uploadStatus.value[statusKey] || null
 }
 
+// 保存上传状态到 localStorage
+const saveUploadStatusToLocalStorage = () => {
+  try {
+    const statusData = JSON.stringify(uploadStatus.value)
+    localStorage.setItem('uploadStatus', statusData)
+  } catch (error) {
+    console.error('保存上传状态到localStorage失败:', error)
+  }
+}
+
+// 从 localStorage 恢复上传状态
+const loadUploadStatusFromLocalStorage = () => {
+  try {
+    const statusData = localStorage.getItem('uploadStatus')
+    if (statusData) {
+      uploadStatus.value = JSON.parse(statusData)
+    }
+  } catch (error) {
+    console.error('从localStorage恢复上传状态失败:', error)
+  }
+}
+
+// 从后端获取并恢复上传状态
+const loadUploadStatusFromBackend = async () => {
+  if (!examData.value?.exam?.id) return
+  
+  try {
+    const token = localStorage.getItem('studentToken')
+    if (!token) return
+
+    const response = await fetch(`/api/student/exams/${examData.value.exam.id}/answers`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    if (!response.ok) {
+      console.error('获取答案失败:', response.status)
+      return
+    }
+
+    const result = await response.json()
+    if (result.code === 20000 && result.data) {
+      const answers = result.data
+      
+      // 遍历所有题目，恢复上传状态
+      if (examData.value?.questions) {
+        for (const question of examData.value.questions) {
+          const answer = answers[question.id]
+          if (!answer) continue
+          
+          // 处理多文件题（file_answers）
+          if (answer.file_answers && question.required_files) {
+            try {
+              const requiredFiles = JSON.parse(question.required_files)
+              requiredFiles.forEach((reqFile, index) => {
+                if (reqFile.uuid && answer.file_answers[reqFile.uuid]) {
+                  const statusKey = question.id + '_' + index
+                  uploadStatus.value[statusKey] = 'success'
+                }
+              })
+            } catch (e) {
+              console.error('解析required_files失败:', e)
+            }
+          }
+          
+          // 处理单文件题（file_url）
+          if (answer.file_url && question.requires_file && !question.required_files) {
+            const statusKey = question.id + '_0'
+            uploadStatus.value[statusKey] = 'success'
+          }
+        }
+      }
+      
+      // 保存到 localStorage
+      saveUploadStatusToLocalStorage()
+      
+      // 更新上传计数
+      updateAllQuestionUploadCounts()
+    }
+  } catch (error) {
+    console.error('从后端获取上传状态失败:', error)
+  }
+}
+
+// 更新所有题目的上传计数
+const updateAllQuestionUploadCounts = () => {
+  if (!examData.value?.questions) return
+  
+  for (const question of examData.value.questions) {
+    const questionId = question.id
+    let count = 0
+    
+    // 获取required_files
+    let requiredFiles = []
+    if (question.required_files) {
+      try {
+        requiredFiles = JSON.parse(question.required_files)
+      } catch (e) {
+        console.error('解析required_files失败:', e)
+      }
+    } else if (question.requires_file) {
+      requiredFiles = [{ description: '上传文件' }]
+    }
+    
+    // 计算已上传的文件数量
+    for (let i = 0; i < requiredFiles.length; i++) {
+      const statusKey = questionId + '_' + i
+      if (uploadStatus.value[statusKey] === 'success') {
+        count++
+      }
+    }
+    
+    questionUploadCounts.value[questionId] = count
+  }
+}
+
 
 // 加载考试数据
 const loadExamData = async () => {
@@ -634,6 +752,7 @@ const submitExam = async (skipConfirm = false) => {
         // 清除本地存储的考试数据
         localStorage.removeItem('examQuestions')
         localStorage.removeItem('studentData')
+        localStorage.removeItem('uploadStatus') // 清除上传状态
         // 清除开始时间记录
         if (examData.value?.exam?.id) {
           localStorage.removeItem(`exam_start_time_${examData.value.exam.id}`)
@@ -742,10 +861,14 @@ const onFileSelected = async (event, index) => {
     if (uploadStatus.value[statusKey] === 'success') {
       // 重置上传状态，允许重新上传
       uploadStatus.value[statusKey] = 'ready'
+      // 保存状态到 localStorage
+      saveUploadStatusToLocalStorage()
       // 更新进度（因为之前成功的文件被替换了）
       updateUploadedFilesCount()
     } else {
       uploadStatus.value[statusKey] = 'ready'
+      // 保存状态到 localStorage
+      saveUploadStatusToLocalStorage()
     }
     
     // 更新答题状态为"进行中"
@@ -757,6 +880,8 @@ const onFileSelected = async (event, index) => {
     const arrayIndex = questionId * 100 + index
     selectedFiles.value[arrayIndex] = null
     uploadStatus.value[questionId + '_' + index] = null
+    // 保存状态到 localStorage
+    saveUploadStatusToLocalStorage()
     // 文件被取消，更新进度
     updateUploadedFilesCount()
   }
@@ -896,6 +1021,9 @@ const uploadAnswerFile = async (index) => {
     if (response.ok && result.code === 20000) {
       uploadStatus.value[currentQuestionData.value.id + '_' + index] = 'success'
       
+      // 保存上传状态到 localStorage
+      saveUploadStatusToLocalStorage()
+      
       // 更新文件上传进度
       updateUploadedFilesCount()
       
@@ -911,10 +1039,14 @@ const uploadAnswerFile = async (index) => {
       }
     } else {
       uploadStatus.value[currentQuestionData.value.id + '_' + index] = 'error'
+      // 保存错误状态到 localStorage
+      saveUploadStatusToLocalStorage()
       alert(`文件 ${file.name} 上传失败: ${result.message || '未知错误'}`)
     }
   } catch (error) {
     uploadStatus.value[currentQuestionData.value.id + '_' + index] = 'error'
+    // 保存错误状态到 localStorage
+    saveUploadStatusToLocalStorage()
     console.error('上传文件失败:', error)
     alert('上传文件失败，请稍后再试。')
   }
@@ -982,6 +1114,13 @@ onMounted(async () => {
   await loadExamData()
   // 初始化倒计时（需要在加载考试数据后）
   initTimer()
+  
+  // 先从 localStorage 恢复状态（快速恢复）
+  loadUploadStatusFromLocalStorage()
+  
+  // 然后从后端获取最新状态（确保数据一致性）
+  await loadUploadStatusFromBackend()
+  
   // 初始化当前题目状态
   initializeCurrentQuestionStatus()
 })
@@ -1075,12 +1214,15 @@ onUnmounted(() => {
   border-right: 1px solid #e0e0e0;
   margin: 0;
   padding: 0;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .question-tabs {
   display: flex;
   background: #f8f9fa;
   border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
 }
 
 .tab-btn {
@@ -1360,12 +1502,14 @@ onUnmounted(() => {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  min-height: 0;
 }
 
 .upload-tabs {
   display: flex;
   background: #f8f9fa;
   border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
 }
 
 .upload-tab-btn {

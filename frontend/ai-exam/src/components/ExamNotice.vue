@@ -73,8 +73,14 @@ const goToExam = async () => {
     const token = localStorage.getItem('studentToken')
     const studentData = JSON.parse(localStorage.getItem('studentData'))
     
-    if (!token || !studentData?.upcoming_exam?.exam_id) {
-      alert('考试信息不完整，请重新登录')
+    if (!token) {
+      alert('登录信息已过期，请重新登录')
+      router.push('/')
+      return
+    }
+    
+    if (!studentData?.upcoming_exam?.exam_id) {
+      alert('当前暂无可参加的考试')
       return
     }
 

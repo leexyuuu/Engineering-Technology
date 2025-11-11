@@ -16,6 +16,7 @@ import os
 import uuid
 import json
 import random
+import hashlib
 from login import checkUserToken,checkEdit,create_access_token
 from admin import checkToken
 from jose import JWTError, jwt
@@ -559,6 +560,46 @@ async def upload_answer_file(
     return {"code": 20000, "data": {"file_url": file_url}}
 
 
+@app.get("/student/exams/{exam_id}/answers")
+async def get_student_answers(
+    exam_id: int,
+    current_student: Student = Depends(get_current_student),
+    db: Session = Depends(get_db)
+):
+    """获取学生当前考试的答案（包括已上传的文件）"""
+    # 获取学生考试记录
+    student_exam = db.query(StudentExam).filter(
+        StudentExam.student_id == current_student.id,
+        StudentExam.exam_id == exam_id
+    ).first()
+    
+    if not student_exam:
+        raise HTTPException(status_code=404, detail="Exam not found for this student")
+    
+    # 获取学生的所有答案
+    student_answers = db.query(StudentAnswer).filter(
+        StudentAnswer.student_exam_id == student_exam.id
+    ).all()
+    
+    # 构建答案字典，key为question_id，value为答案信息
+    answers_dict = {}
+    for answer in student_answers:
+        file_answers = {}
+        if answer.file_answers:
+            try:
+                file_answers = json.loads(answer.file_answers)
+            except json.JSONDecodeError:
+                file_answers = {}
+        
+        answers_dict[answer.question_id] = {
+            "question_id": answer.question_id,
+            "file_answers": file_answers,  # {required_file_uuid: file_url}
+            "file_url": answer.file_url,  # 单文件题的URL
+            "option_answers": answer.option_answers
+        }
+    
+    return {"code": 20000, "data": answers_dict}
+
 
 #返回考试跟题目数据
 @app.get("/student/exams/{exam_id}/result/{student_id}")
@@ -601,35 +642,45 @@ def get_exam_result(
     chapter3_part2 = [q for q in all_questions if 26 <= q.order <= 30]  # 第三章后5道：3.2.1-3.2.5
     chapter4 = [q for q in all_questions if 31 <= q.order <= 40]  # 第四章：4.1.1-4.2.5
     
+    # 创建独立的 Random 实例，避免影响全局 random 模块
+    local_random = random.Random()
+    
+    # 使用确定性随机，确保同一学生同一场考试题目固定
+    # 这样前端和后台管理系统刷新页面后，题目不会改变
+    seed_string = f"{student_exam.student_id}_{student_exam.exam_id}_{student_exam.id}"
+    md5_hash = hashlib.md5(seed_string.encode()).hexdigest()
+    seed_value = int(md5_hash, 16)
+    local_random.seed(seed_value)
+    
     # 从每组随机选择指定数量的题目
     selected_questions = []
     
     # 第一章：10道题随机出1道
     if chapter1:
-        selected_questions.append(random.choice(chapter1))
+        selected_questions.append(local_random.choice(chapter1))
     
     # 第二章：前5道题随机出1道，后5道题随机出1道
     if chapter2_part1:
-        selected_questions.append(random.choice(chapter2_part1))
+        selected_questions.append(local_random.choice(chapter2_part1))
     if chapter2_part2:
-        selected_questions.append(random.choice(chapter2_part2))
+        selected_questions.append(local_random.choice(chapter2_part2))
     
     # 第三章：前5道题随机出1道，后5道题随机出1道
     if chapter3_part1:
-        selected_questions.append(random.choice(chapter3_part1))
+        selected_questions.append(local_random.choice(chapter3_part1))
     if chapter3_part2:
-        selected_questions.append(random.choice(chapter3_part2))
+        selected_questions.append(local_random.choice(chapter3_part2))
     
     # 第四章：10道题随机出1道
     if chapter4:
-        selected_questions.append(random.choice(chapter4))
+        selected_questions.append(local_random.choice(chapter4))
     
     # 如果按规则选择的题目数量不足，从剩余题目中补充
     if len(selected_questions) < 6 and len(all_questions) > len(selected_questions):
         remaining_questions = [q for q in all_questions if q not in selected_questions]
         needed = 6 - len(selected_questions)
         if len(remaining_questions) >= needed:
-            selected_questions.extend(random.sample(remaining_questions, needed))
+            selected_questions.extend(local_random.sample(remaining_questions, needed))
         else:
             selected_questions.extend(remaining_questions)
     
