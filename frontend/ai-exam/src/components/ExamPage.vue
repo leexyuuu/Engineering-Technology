@@ -18,7 +18,7 @@
       <div class="left-panel">
         <!-- 题目导航标签 -->
         <div class="question-tabs">
-          <button 
+          <button
             v-for="question in examData?.questions" 
             :key="question.id"
             :class="['tab-btn', { active: currentQuestion === question.order }]"
@@ -76,7 +76,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(file, index) in currentQuestionRequiredFiles" :key="index">
+                <tr v-for="(file, index) in currentQuestionRequiredFiles" :key="`${currentQuestionData?.id || 'unknown'}-${index}-${file.uuid || file.name || index}`">
                   <td>{{ index + 1 }}</td>
                   <td>{{ file.name || file.description || `上传文件 ${index + 1}` }}</td>
                   <td>
@@ -86,6 +86,7 @@
                       style="display: none;" 
                       @change="onFileSelected($event, index)"
                       :disabled="getUploadStatus(currentQuestionData?.id, index) === 'uploading'"
+                      ref="fileInput"
                     />
                     <label 
                       :for="'file-' + currentQuestionData?.id + '-' + index" 
@@ -189,6 +190,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+
 
 const currentQuestion = ref(1)
 const activeTab = ref('upload')
@@ -604,9 +606,11 @@ const goToPreviousQuestion = async () => {
   
   const currentIndex = examData.value.questions.findIndex(q => q.order === currentQuestion.value)
   if (currentIndex > 0) {
-    currentQuestion.value = examData.value.questions[currentIndex - 1].order
-    // 重置当前题目的答题状态和上传计数
     const prevQuestion = examData.value.questions[currentIndex - 1]
+    
+    currentQuestion.value = prevQuestion.order
+    
+    // 重置当前题目的答题状态和上传计数
     currentAnswerStatus.value = answerStatus.value[prevQuestion.id] || 'not_answered'
     // 初始化新题目的状态
     initializeCurrentQuestionStatus()
@@ -621,9 +625,11 @@ const goToNextQuestion = async () => {
   
   const currentIndex = examData.value.questions.findIndex(q => q.order === currentQuestion.value)
   if (currentIndex < examData.value.questions.length - 1) {
-    currentQuestion.value = examData.value.questions[currentIndex + 1].order
-    // 重置当前题目的答题状态和上传计数
     const nextQuestion = examData.value.questions[currentIndex + 1]
+    
+    currentQuestion.value = nextQuestion.order
+    
+    // 重置当前题目的答题状态和上传计数
     currentAnswerStatus.value = answerStatus.value[nextQuestion.id] || 'not_answered'
     // 初始化新题目的状态
     initializeCurrentQuestionStatus()
@@ -980,7 +986,7 @@ const uploadAnswerFile = async (index) => {
     alert('请选择要上传的文件！')
     return
   }
-
+  
   // 获取当前题目的required_files信息
   const currentRequiredFiles = currentQuestionRequiredFiles.value
   const targetFile = currentRequiredFiles[index]
@@ -1037,18 +1043,32 @@ const uploadAnswerFile = async (index) => {
         // 保存答题状态到后端
         await saveCurrentAnswerStatus()
       }
+      
+      // 重置 input 的 value，允许重新选择文件替换
+      const inputElement = document.getElementById(`file-${currentQuestionData.value.id}-${index}`)
+      if (inputElement) inputElement.value = ''
     } else {
       uploadStatus.value[currentQuestionData.value.id + '_' + index] = 'error'
+      
       // 保存错误状态到 localStorage
       saveUploadStatusToLocalStorage()
       alert(`文件 ${file.name} 上传失败: ${result.message || '未知错误'}`)
+      
+      // 重置 input 的 value，允许重新选择文件重试
+      const inputElement = document.getElementById(`file-${currentQuestionData.value.id}-${index}`)
+      if (inputElement) inputElement.value = ''
     }
   } catch (error) {
     uploadStatus.value[currentQuestionData.value.id + '_' + index] = 'error'
+    
     // 保存错误状态到 localStorage
     saveUploadStatusToLocalStorage()
     console.error('上传文件失败:', error)
     alert('上传文件失败，请稍后再试。')
+    
+    // 重置 input 的 value，允许重新选择文件重试
+    const inputElement = document.getElementById(`file-${currentQuestionData.value.id}-${index}`)
+    if (inputElement) inputElement.value = ''
   }
 }
 
@@ -1109,9 +1129,11 @@ const startTimer = (durationMinutes) => {
   }, 1000)
 }
 
+
 // 组件挂载时开始倒计时和加载数据
 onMounted(async () => {
   await loadExamData()
+  
   // 初始化倒计时（需要在加载考试数据后）
   initTimer()
   
