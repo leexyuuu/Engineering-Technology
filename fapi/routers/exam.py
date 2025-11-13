@@ -372,8 +372,15 @@ async def download_student_files(
                             if file_uuid in required_files_info:
                                 # 使用题目中定义的文件名
                                 req_file_name = clean_filename(required_files_info[file_uuid])
-                                file_ext = os.path.splitext(filename)[1]
-                                target_filename = f"题目{question_order}_{req_file_name}{file_ext}"
+                                # 检查req_file_name是否已经包含扩展名
+                                req_file_ext = os.path.splitext(req_file_name)[1]
+                                if req_file_ext:
+                                    # 如果已经包含扩展名，直接使用
+                                    target_filename = f"题目{question_order}_{req_file_name}"
+                                else:
+                                    # 如果没有扩展名，从实际文件名中提取并添加
+                                    file_ext = os.path.splitext(filename)[1]
+                                    target_filename = f"题目{question_order}_{req_file_name}{file_ext}"
                             else:
                                 # 使用默认文件名
                                 file_ext = os.path.splitext(filename)[1]
