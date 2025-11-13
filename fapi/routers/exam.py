@@ -178,13 +178,41 @@ def read_exam_questions(exam_id:int, db: Session = Depends(get_db)):
 def read_exam_students(exam_id:int, page: int = 1, page_size: int = 20, db: Session = Depends(get_db)):
     """获取参加某场考试的学生列表，包含考试结果"""
     # 查询该考试的所有学生考试记录
-    total = db.query(StudentExam).filter(StudentExam.exam_id == exam_id).count()
-    student_exams = db.query(StudentExam).filter(StudentExam.exam_id == exam_id)\
-        .offset(page_size * (page - 1)).limit(page_size).all()
+    all_student_exams = db.query(StudentExam).filter(StudentExam.exam_id == exam_id).all()
+    
+    # 按学生分组，每个学生只保留最新的考试记录
+    # 优先级：in_progress > submitted > 其他，然后按 id 降序
+    student_exam_dict = {}
+    for se in all_student_exams:
+        student_id = se.student_id
+        if student_id not in student_exam_dict:
+            student_exam_dict[student_id] = se
+        else:
+            current = student_exam_dict[student_id]
+            # 优先级：in_progress > submitted > 其他
+            if se.status == "in_progress" and current.status != "in_progress":
+                student_exam_dict[student_id] = se
+            elif se.status == "submitted" and current.status not in ["in_progress", "submitted"]:
+                student_exam_dict[student_id] = se
+            elif se.status == current.status and se.id > current.id:
+                # 相同状态，选择 id 更大的（更新的）
+                student_exam_dict[student_id] = se
+    
+    # 转换为列表并排序（按学生ID排序，保持一致性）
+    student_exams = list(student_exam_dict.values())
+    student_exams.sort(key=lambda x: x.student_id)
+    
+    # 计算总数
+    total = len(student_exams)
+    
+    # 分页
+    start = page_size * (page - 1)
+    end = start + page_size
+    paginated_exams = student_exams[start:end]
     
     # 构建返回数据，包含学生信息和考试结果
     result = []
-    for se in student_exams:
+    for se in paginated_exams:
         student_data = {
             "id": se.student.id,
             "name": se.student.name,
@@ -295,11 +323,19 @@ async def download_student_files(
     if not student:
         raise HTTPException(status_code=404, detail="学生不存在")
     
-    # 获取学生考试记录
+    # 获取学生考试记录 - 优先返回已提交的最新考试，否则返回最新的
     student_exam = db.query(StudentExam).filter(
         StudentExam.exam_id == exam_id,
-        StudentExam.student_id == student_id
-    ).first()
+        StudentExam.student_id == student_id,
+        StudentExam.status == "submitted"
+    ).order_by(StudentExam.id.desc()).first()
+    
+    # 如果没有已提交的，返回最新的
+    if not student_exam:
+        student_exam = db.query(StudentExam).filter(
+            StudentExam.exam_id == exam_id,
+            StudentExam.student_id == student_id
+        ).order_by(StudentExam.id.desc()).first()
     
     if not student_exam:
         raise HTTPException(status_code=404, detail="该学生未参加此考试")
