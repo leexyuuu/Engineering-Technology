@@ -172,59 +172,14 @@ def get_student_with_upcoming_exam(student: Student, db: Session):
     from datetime import datetime
     now = datetime.now()
     
-    # 优先查找进行中的考试
+    # 查询学生绑定的考试，按考试开始时间排序，只获取未开始且即将开始的考试
     upcoming_exam = db.query(StudentExam).join(Exam).filter(
         and_(
             StudentExam.student_id == student.id,
             Exam.end_time > now,  # 考试还未结束
-            StudentExam.status == "in_progress"  # 优先返回进行中的
+            StudentExam.status != "submitted"  # 学生还未交卷
         )
     ).order_by(Exam.start_time.asc()).first()
-    
-    # 如果没有进行中的，查找未提交的考试
-    if not upcoming_exam:
-        upcoming_exam = db.query(StudentExam).join(Exam).filter(
-            and_(
-                StudentExam.student_id == student.id,
-                Exam.end_time > now,  # 考试还未结束
-                StudentExam.status != "submitted"  # 学生还未交卷
-            )
-        ).order_by(Exam.start_time.asc(), StudentExam.id.desc()).first()
-    
-    # 如果还没有找到，检查是否有已提交的考试，但还有机会重新开始
-    if not upcoming_exam:
-        # 查找学生参加过的所有考试（包括已提交的）
-        all_student_exams = db.query(StudentExam).join(Exam).filter(
-            and_(
-                StudentExam.student_id == student.id,
-                Exam.end_time > now  # 考试还未结束
-            )
-        ).all()
-        
-        # 按考试分组，找到每个考试中已提交的次数
-        exam_submitted_count = {}
-        for se in all_student_exams:
-            exam_id = se.exam_id
-            if exam_id not in exam_submitted_count:
-                exam_submitted_count[exam_id] = 0
-            if se.status == "submitted":
-                exam_submitted_count[exam_id] += 1
-        
-        # 找到还有机会的考试（已提交次数 < 3）
-        for exam_id, submitted_count in exam_submitted_count.items():
-            if submitted_count < 3:
-                # 找到这个考试的信息
-                exam = db.query(Exam).filter(Exam.id == exam_id).first()
-                if exam:
-                    # 返回最新的已提交记录（用于获取考试信息）
-                    latest_exam = db.query(StudentExam).filter(
-                        StudentExam.student_id == student.id,
-                        StudentExam.exam_id == exam_id
-                    ).order_by(StudentExam.id.desc()).first()
-                    
-                    if latest_exam:
-                        upcoming_exam = latest_exam
-                        break
     
     # 构建学生数据，包含最近的考试信息
     student_data = {
@@ -375,34 +330,26 @@ def start_exam(
     elif exam_status == "ended":
         raise HTTPException(status_code=400, detail="Exam has already ended")
     
-    # 查询该学生的所有考试记录
-    all_exams = db.query(StudentExam).filter(
+    # 检查是否已经参加过考试
+    existing_exam = db.query(StudentExam).filter(
         StudentExam.student_id == current_student.id,
         StudentExam.exam_id == exam_data.exam_id
-    ).all()
+    ).first()
     
-    # 优先查找进行中的考试
-    in_progress_exam = next((e for e in all_exams if e.status == "in_progress"), None)
-    if in_progress_exam:
-        return in_progress_exam
-    
-    # 查找未开始的考试
-    not_started_exam = next((e for e in all_exams if e.status == "not_started"), None)
-    if not_started_exam:
-        print("更新现有考试记录状态为in_progress")
-        not_started_exam.status = "in_progress"
-        not_started_exam.start_time = datetime.now()
-        db.commit()
-        db.refresh(not_started_exam)
-        print(f"更新后的状态: {not_started_exam.status}")
-        return not_started_exam
-    
-    # 统计已提交次数
-    submitted_count = sum(1 for e in all_exams if e.status == "submitted")
-    
-    # 检查是否还有机会（最多3次）
-    if submitted_count >= 3:
-        raise HTTPException(status_code=400, detail="您已经用完了3次考试机会")
+    if existing_exam:
+        if existing_exam.status == "submitted":
+            raise HTTPException(status_code=400, detail="You have already submitted this exam")
+        
+        # 如果状态是not_started，更新为in_progress
+        if existing_exam.status == "not_started":
+            print("更新现有考试记录状态为in_progress")
+            existing_exam.status = "in_progress"
+            existing_exam.start_time = datetime.now()
+            db.commit()
+            db.refresh(existing_exam)
+            print(f"更新后的状态: {existing_exam.status}")
+        
+        return existing_exam
     
     # 创建新的考试记录
     print("创建新的考试记录")
@@ -424,19 +371,10 @@ def get_student_exam(
     current_student: Student = Depends(get_current_student),
     db: Session = Depends(get_db)
 ):
-    # 优先查找进行中的考试
     student_exam = db.query(StudentExam).filter(
         StudentExam.student_id == current_student.id,
-        StudentExam.exam_id == exam_id,
-        StudentExam.status == "in_progress"
+        StudentExam.exam_id == exam_id
     ).first()
-    
-    # 如果没有进行中的，返回最新的
-    if not student_exam:
-        student_exam = db.query(StudentExam).filter(
-            StudentExam.student_id == current_student.id,
-            StudentExam.exam_id == exam_id
-        ).order_by(StudentExam.id.desc()).first()
     
     if not student_exam:
         raise HTTPException(status_code=404, detail="Exam not found for this student")
@@ -450,12 +388,11 @@ def submit_exam(
     db: Session = Depends(get_db)
     
 ):
-    # 获取进行中的考试记录
+    # 获取学生考试记录
     student_exam = db.query(StudentExam).filter(
         StudentExam.student_id == current_student.id,
-        StudentExam.exam_id == exam_id,
-        StudentExam.status == "in_progress"
-    ).order_by(StudentExam.id.desc()).first()
+        StudentExam.exam_id == exam_id
+    ).first()
     
     if not student_exam:
         return {"code":404,"message":"没有开始考试"}
@@ -630,19 +567,11 @@ async def get_student_answers(
     db: Session = Depends(get_db)
 ):
     """获取学生当前考试的答案（包括已上传的文件）"""
-    # 优先查找进行中的考试记录
+    # 获取学生考试记录
     student_exam = db.query(StudentExam).filter(
         StudentExam.student_id == current_student.id,
-        StudentExam.exam_id == exam_id,
-        StudentExam.status == "in_progress"
+        StudentExam.exam_id == exam_id
     ).first()
-    
-    # 如果没有进行中的，返回最新的
-    if not student_exam:
-        student_exam = db.query(StudentExam).filter(
-            StudentExam.student_id == current_student.id,
-            StudentExam.exam_id == exam_id
-        ).order_by(StudentExam.id.desc()).first()
     
     if not student_exam:
         raise HTTPException(status_code=404, detail="Exam not found for this student")
@@ -682,28 +611,11 @@ def get_exam_result(
 ):
   
     checkEdit(token, student_id, db)
-    # 获取学生考试记录 - 优先返回进行中的考试，然后返回已提交的最新考试，最后返回最新的
-    # 优先查找进行中的考试
+    # 获取学生考试记录
     student_exam = db.query(StudentExam).filter(
         StudentExam.student_id == student_id,
-        StudentExam.exam_id == exam_id,
-        StudentExam.status == "in_progress"
-    ).order_by(StudentExam.id.desc()).first()
-    
-    # 如果没有进行中的，查找已提交的最新考试
-    if not student_exam:
-        student_exam = db.query(StudentExam).filter(
-            StudentExam.student_id == student_id,
-            StudentExam.exam_id == exam_id,
-            StudentExam.status == "submitted"
-        ).order_by(StudentExam.id.desc()).first()
-    
-    # 如果都没有，返回最新的
-    if not student_exam:
-        student_exam = db.query(StudentExam).filter(
-            StudentExam.student_id == student_id,
-            StudentExam.exam_id == exam_id
-        ).order_by(StudentExam.id.desc()).first()
+        StudentExam.exam_id == exam_id
+    ).first()
 
     exam = db.query(Exam).filter(
         Exam.id == exam_id
