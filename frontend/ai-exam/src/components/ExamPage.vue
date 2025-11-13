@@ -25,11 +25,8 @@
             @click="currentQuestion = question.order"
           >
             第{{ question.order }}题
-            <span v-if="answerStatus[question.id]" class="answer-status">
-              {{ 
-                answerStatus[question.id] === 'answered' ? '✅' : 
-                answerStatus[question.id] === 'in_progress' ? '🔄' : '⭕' 
-              }}
+            <span v-if="answerStatus[question.id] === 'answered'" class="answer-status">
+              ✅
             </span>
           </button>
         </div>
@@ -428,12 +425,52 @@ const saveUploadStatusToLocalStorage = () => {
   }
 }
 
+// 根据 uploadStatus 更新 answerStatus
+const updateAnswerStatusFromUploadStatus = () => {
+  if (!examData.value?.questions) return
+  
+  for (const question of examData.value.questions) {
+    let requiredFiles = []
+    if (question.required_files) {
+      try {
+        requiredFiles = JSON.parse(question.required_files)
+      } catch (e) {
+        console.error('解析required_files失败:', e)
+      }
+    } else if (question.requires_file) {
+      requiredFiles = [{ description: '上传文件' }]
+    }
+    
+    if (requiredFiles.length > 0) {
+      // 检查所有文件是否都已上传
+      let uploadedCount = 0
+      for (let i = 0; i < requiredFiles.length; i++) {
+        const statusKey = question.id + '_' + i
+        if (uploadStatus.value[statusKey] === 'success') {
+          uploadedCount++
+        }
+      }
+      
+      // 根据上传情况更新 answerStatus（只设置所有文件已上传的状态）
+      if (uploadedCount === requiredFiles.length) {
+        // 所有文件都已上传
+        answerStatus.value[question.id] = 'answered'
+      } else {
+        // 部分文件已上传或未上传，清除状态
+        delete answerStatus.value[question.id]
+      }
+    }
+  }
+}
+
 // 从 localStorage 恢复上传状态
 const loadUploadStatusFromLocalStorage = () => {
   try {
     const statusData = localStorage.getItem('uploadStatus')
     if (statusData) {
       uploadStatus.value = JSON.parse(statusData)
+      // 恢复后更新 answerStatus
+      updateAnswerStatusFromUploadStatus()
     }
   } catch (error) {
     console.error('从localStorage恢复上传状态失败:', error)
@@ -490,8 +527,12 @@ const loadUploadStatusFromBackend = async () => {
             const statusKey = question.id + '_0'
             uploadStatus.value[statusKey] = 'success'
           }
+          
         }
       }
+      
+      // 根据 uploadStatus 更新 answerStatus
+      updateAnswerStatusFromUploadStatus()
       
       // 保存到 localStorage
       saveUploadStatusToLocalStorage()

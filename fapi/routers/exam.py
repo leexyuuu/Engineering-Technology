@@ -375,6 +375,10 @@ async def download_student_files(
             question_order = question.order if question.order else answer.question_id
             question_content = question.content[:50] if question.content else f"题目{question_order}"  # 截取前50个字符作为文件名
             
+            # 创建题号文件夹
+            question_folder = os.path.join(student_folder, f"题目{question_order}")
+            os.makedirs(question_folder, exist_ok=True)
+            
             # 处理多文件答案 (file_answers)
             if answer.file_answers:
                 try:
@@ -404,7 +408,7 @@ async def download_student_files(
                             if not os.path.exists(source_file):
                                 continue
                             
-                            # 生成目标文件名
+                            # 生成目标文件名（去掉题号前缀，因为已经在题号文件夹中）
                             if file_uuid in required_files_info:
                                 # 使用题目中定义的文件名
                                 req_file_name = clean_filename(required_files_info[file_uuid])
@@ -412,17 +416,17 @@ async def download_student_files(
                                 req_file_ext = os.path.splitext(req_file_name)[1]
                                 if req_file_ext:
                                     # 如果已经包含扩展名，直接使用
-                                    target_filename = f"题目{question_order}_{req_file_name}"
+                                    target_filename = req_file_name
                                 else:
                                     # 如果没有扩展名，从实际文件名中提取并添加
                                     file_ext = os.path.splitext(filename)[1]
-                                    target_filename = f"题目{question_order}_{req_file_name}{file_ext}"
+                                    target_filename = f"{req_file_name}{file_ext}"
                             else:
                                 # 使用默认文件名
                                 file_ext = os.path.splitext(filename)[1]
-                                target_filename = f"题目{question_order}_第{file_index}个文件{file_ext}"
+                                target_filename = f"第{file_index}个文件{file_ext}"
                             
-                            target_file = os.path.join(student_folder, target_filename)
+                            target_file = os.path.join(question_folder, target_filename)
                             
                             # 如果文件名冲突，添加序号
                             if os.path.exists(target_file):
@@ -430,7 +434,7 @@ async def download_student_files(
                                 counter = 1
                                 while os.path.exists(target_file):
                                     target_filename = f"{base_name}_{counter}{ext}"
-                                    target_file = os.path.join(student_folder, target_filename)
+                                    target_file = os.path.join(question_folder, target_filename)
                                     counter += 1
                             
                             shutil.copy2(source_file, target_file)
@@ -445,8 +449,8 @@ async def download_student_files(
                     source_file = os.path.join(UPLOAD_FOLDER, filename)
                     if os.path.exists(source_file):
                         file_ext = os.path.splitext(filename)[1]
-                        target_filename = f"题目{question_order}_文件{file_ext}"
-                        target_file = os.path.join(student_folder, target_filename)
+                        target_filename = f"文件{file_ext}"
+                        target_file = os.path.join(question_folder, target_filename)
                         
                         # 如果文件名冲突，添加序号
                         if os.path.exists(target_file):
@@ -454,7 +458,7 @@ async def download_student_files(
                             counter = 1
                             while os.path.exists(target_file):
                                 target_filename = f"{base_name}_{counter}{ext}"
-                                target_file = os.path.join(student_folder, target_filename)
+                                target_file = os.path.join(question_folder, target_filename)
                                 counter += 1
                         
                         shutil.copy2(source_file, target_file)
