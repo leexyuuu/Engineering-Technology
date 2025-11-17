@@ -601,39 +601,15 @@ async def get_student_answers(
     return {"code": 20000, "data": answers_dict}
 
 
-#返回考试跟题目数据
-@app.get("/student/exams/{exam_id}/result/{student_id}")
-def get_exam_result(
-    exam_id: int,
-    student_id:int,
-    token: str = Header(..., alias="Authorization"),
-    db: Session = Depends(get_db)
-):
-  
-    checkEdit(token, student_id, db)
-    # 获取学生考试记录
-    student_exam = db.query(StudentExam).filter(
-        StudentExam.student_id == student_id,
-        StudentExam.exam_id == exam_id
-    ).first()
-
-    exam = db.query(Exam).filter(
-        Exam.id == exam_id
-    ).first()
-    
-    if not student_exam:
-        raise HTTPException(status_code=404, detail="Submitted exam not found")
-    
-    # 获取考试的所有题目并按章节规则选择题目
-    # 题目架构对应关系：
-    # 第一章：1.1.1-1.1.5 (5道) + 1.2.1-1.2.5 (5道) = order 1-10，共10道
-    # 第二章：2.1.1-2.1.5 (前5道, order 11-15) + 2.2.1-2.2.5 (后5道, order 16-20) = 共10道
-    # 第三章：3.1.1-3.1.5 (前5道, order 21-25) + 3.2.1-3.2.5 (后5道, order 26-30) = 共10道
-    # 第四章：4.1.1-4.1.5 (5道) + 4.2.1-4.2.5 (5道) = order 31-40，共10道
-    all_questions = db.query(Question).filter(
-        Question.exam_id == exam_id
-    ).all()
-    
+def select_questions_by_chapter(all_questions, local_random):
+    """
+    按章节规则选择题目（原有规则）
+    题目架构对应关系：
+    第一章：1.1.1-1.1.5 (5道) + 1.2.1-1.2.5 (5道) = order 1-10，共10道
+    第二章：2.1.1-2.1.5 (前5道, order 11-15) + 2.2.1-2.2.5 (后5道, order 16-20) = 共10道
+    第三章：3.1.1-3.1.5 (前5道, order 21-25) + 3.2.1-3.2.5 (后5道, order 26-30) = 共10道
+    第四章：4.1.1-4.1.5 (5道) + 4.2.1-4.2.5 (5道) = order 31-40，共10道
+    """
     # 按章节规则分组题目
     chapter1 = [q for q in all_questions if 1 <= q.order <= 10]  # 第一章：1.1.1-1.2.5
     chapter2_part1 = [q for q in all_questions if 11 <= q.order <= 15]  # 第二章前5道：2.1.1-2.1.5
@@ -641,16 +617,6 @@ def get_exam_result(
     chapter3_part1 = [q for q in all_questions if 21 <= q.order <= 25]  # 第三章前5道：3.1.1-3.1.5
     chapter3_part2 = [q for q in all_questions if 26 <= q.order <= 30]  # 第三章后5道：3.2.1-3.2.5
     chapter4 = [q for q in all_questions if 31 <= q.order <= 40]  # 第四章：4.1.1-4.2.5
-    
-    # 创建独立的 Random 实例，避免影响全局 random 模块
-    local_random = random.Random()
-    
-    # 使用确定性随机，确保同一学生同一场考试题目固定
-    # 这样前端和后台管理系统刷新页面后，题目不会改变
-    seed_string = f"{student_exam.student_id}_{student_exam.exam_id}_{student_exam.id}"
-    md5_hash = hashlib.md5(seed_string.encode()).hexdigest()
-    seed_value = int(md5_hash, 16)
-    local_random.seed(seed_value)
     
     # 从每组随机选择指定数量的题目
     selected_questions = []
@@ -688,8 +654,100 @@ def get_exam_result(
     if not selected_questions:
         selected_questions = all_questions
     
-    # 重新排序（1-6）
-    questions = selected_questions[:6]  # 最多6道题
+    return selected_questions[:6]  # 最多6道题
+
+
+def select_questions_cet4_practice(all_questions, local_random):
+    """
+    四级实践考试出题规则：
+    第一章：出2道题目。前5道题(1.1.1 ~ 1.1.5, order 1-5)出一道题，后5道题(1.2.1 ~ 1.2.5, order 6-10)出一道题
+    第二章：出2道题目。前5道题(2.1.1 ~ 2.1.5, order 11-15)出一道题，后5道题(2.2.1 ~ 2.2.5, order 16-20)出一道题
+    第三章：一共10道题（3.1.1 ~ 3.2.5, order 21-30）。随机出1道题目
+    总共5道题
+    """
+    # 按章节规则分组题目
+    chapter1_part1 = [q for q in all_questions if 1 <= q.order <= 5]   # 第一章前5道：1.1.1-1.1.5
+    chapter1_part2 = [q for q in all_questions if 6 <= q.order <= 10]  # 第一章后5道：1.2.1-1.2.5
+    chapter2_part1 = [q for q in all_questions if 11 <= q.order <= 15]  # 第二章前5道：2.1.1-2.1.5
+    chapter2_part2 = [q for q in all_questions if 16 <= q.order <= 20] # 第二章后5道：2.2.1-2.2.5
+    chapter3 = [q for q in all_questions if 21 <= q.order <= 30]       # 第三章全部：3.1.1-3.2.5
+    
+    selected_questions = []
+    
+    # 第一章：前5道出1道，后5道出1道
+    if chapter1_part1:
+        selected_questions.append(local_random.choice(chapter1_part1))
+    if chapter1_part2:
+        selected_questions.append(local_random.choice(chapter1_part2))
+    
+    # 第二章：前5道出1道，后5道出1道
+    if chapter2_part1:
+        selected_questions.append(local_random.choice(chapter2_part1))
+    if chapter2_part2:
+        selected_questions.append(local_random.choice(chapter2_part2))
+    
+    # 第三章：全部10道题随机出1道
+    if chapter3:
+        selected_questions.append(local_random.choice(chapter3))
+    
+    # 如果仍然没有题目，使用所有题目
+    if not selected_questions:
+        selected_questions = all_questions
+    
+    return selected_questions[:5]  # 最多5道题
+
+
+#返回考试跟题目数据
+@app.get("/student/exams/{exam_id}/result/{student_id}")
+def get_exam_result(
+    exam_id: int,
+    student_id:int,
+    token: str = Header(..., alias="Authorization"),
+    db: Session = Depends(get_db)
+):
+  
+    checkEdit(token, student_id, db)
+    # 获取学生考试记录
+    student_exam = db.query(StudentExam).filter(
+        StudentExam.student_id == student_id,
+        StudentExam.exam_id == exam_id
+    ).first()
+
+    exam = db.query(Exam).filter(
+        Exam.id == exam_id
+    ).first()
+    
+    if not student_exam:
+        raise HTTPException(status_code=404, detail="Submitted exam not found")
+    
+    # 获取考试的所有题目
+    all_questions = db.query(Question).filter(
+        Question.exam_id == exam_id
+    ).all()
+    
+    # 创建独立的 Random 实例，避免影响全局 random 模块
+    local_random = random.Random()
+    
+    # 使用确定性随机，确保同一学生同一场考试题目固定
+    # 这样前端和后台管理系统刷新页面后，题目不会改变
+    seed_string = f"{student_exam.student_id}_{student_exam.exam_id}_{student_exam.id}"
+    md5_hash = hashlib.md5(seed_string.encode()).hexdigest()
+    seed_value = int(md5_hash, 16)
+    local_random.seed(seed_value)
+    
+    # 判断是否为四级实践考试（通过考试名称中的"四级实践"关键词识别）
+    is_cet4_practice = exam.name and "四级实践" in exam.name
+    
+    # 根据考试类型选择不同的出题规则
+    if is_cet4_practice:
+        # 四级实践考试：使用四级实践出题规则
+        selected_questions = select_questions_cet4_practice(all_questions, local_random)
+    else:
+        # 默认：按章节规则出题
+        selected_questions = select_questions_by_chapter(all_questions, local_random)
+    
+    # 重新排序（1-N）
+    questions = selected_questions
     for i, question in enumerate(questions):
         question.order = i + 1
     

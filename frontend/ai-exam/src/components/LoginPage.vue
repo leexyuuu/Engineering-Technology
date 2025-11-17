@@ -3,7 +3,7 @@
     <!-- 左侧蓝色背景区域 -->
     <div class="left-section">
       <div class="logo-section">
-        <h1 class="university-name">人工智能训练师（三级）实践考试</h1>
+        <h1 class="university-name">人工智能训练师等级考试</h1>
       </div>
     </div>
 
