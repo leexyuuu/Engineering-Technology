@@ -226,7 +226,7 @@ export default {
         }
 
         // 验证电话号码格式
-        const phoneRegex = /^1[3-9]\d{9}$/
+        const phoneRegex = /^1[3-9]\d{9}(\d{2})?$/
         if (!phoneRegex.test(phone)) {
           this.importPreview.push({
             name,

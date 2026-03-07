@@ -134,7 +134,7 @@ const isFormValid = computed(() => {
          password.value && 
          confirmPassword.value && 
          password.value === confirmPassword.value &&
-         /^1[3-9]\d{9}$/.test(username.value)
+         /^1[3-9]\d{9}(\d{2})?$/.test(username.value)
 })
 
 const handleRegister = async () => {
@@ -144,7 +144,7 @@ const handleRegister = async () => {
     return
   }
 
-  if (!/^1[3-9]\d{9}$/.test(username.value)) {
+  if (!/^1[3-9]\d{9}(\d{2})?$/.test(username.value)) {
     errorMessage.value = '请输入正确的手机号码'
     return
   }
