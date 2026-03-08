@@ -22,7 +22,7 @@
             v-for="question in examData?.questions" 
             :key="question.id"
             :class="['tab-btn', { active: currentQuestion === question.order }]"
-            @click="currentQuestion = question.order"
+            @click="currentQuestion = question.order; showAnswer = false"
           >
             第{{ question.order }}题
             <span v-if="answerStatus[question.id] === 'answered'" class="answer-status">
@@ -123,6 +123,15 @@
                 :style="{ width: `${currentQuestionRequiredFiles.length > 0 ? (uploadedFilesCount / currentQuestionRequiredFiles.length) * 100 : 0}%` }"
               ></div>
             </div>
+          </div>
+
+          <!-- 查看答案 -->
+          <div v-if="currentQuestionData?.reference_answer" class="reference-answer-section">
+            <div class="reference-answer-toggle" @click="showAnswer = !showAnswer">
+              <span class="toggle-icon">{{ showAnswer ? '▼' : '▶' }}</span>
+              <span class="toggle-text">查看答案</span>
+            </div>
+            <div v-if="showAnswer" class="reference-answer-content markdown-content" v-html="renderedAnswerContent"></div>
           </div>
 
         </div>
@@ -337,6 +346,14 @@ const renderedNoticeContent = computed(() => {
   if (!currentQuestionData.value?.file_description) return ''
   return renderMarkdown(currentQuestionData.value.file_description)
 })
+
+// 渲染后的内容 - 参考答案
+const renderedAnswerContent = computed(() => {
+  if (!currentQuestionData.value?.reference_answer) return ''
+  return renderMarkdown(currentQuestionData.value.reference_answer)
+})
+
+const showAnswer = ref(false)
 
 // 计算当前题目数据
 const currentQuestionData = computed(() => {
@@ -650,6 +667,7 @@ const goToPreviousQuestion = async () => {
     const prevQuestion = examData.value.questions[currentIndex - 1]
     
     currentQuestion.value = prevQuestion.order
+    showAnswer.value = false
     
     // 重置当前题目的答题状态和上传计数
     currentAnswerStatus.value = answerStatus.value[prevQuestion.id] || 'not_answered'
@@ -669,6 +687,7 @@ const goToNextQuestion = async () => {
     const nextQuestion = examData.value.questions[currentIndex + 1]
     
     currentQuestion.value = nextQuestion.order
+    showAnswer.value = false
     
     // 重置当前题目的答题状态和上传计数
     currentAnswerStatus.value = answerStatus.value[nextQuestion.id] || 'not_answered'
@@ -1335,6 +1354,46 @@ onUnmounted(() => {
   height: 100%;
   background: #FF3355;
   transition: width 0.3s ease;
+}
+
+.reference-answer-section {
+  margin: 15px 0;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.reference-answer-toggle {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  background: #f8f9fa;
+  cursor: pointer;
+  user-select: none;
+}
+
+.reference-answer-toggle:hover {
+  background: #e9ecef;
+}
+
+.toggle-icon {
+  font-size: 12px;
+  margin-right: 8px;
+  color: #FF3355;
+}
+
+.toggle-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.reference-answer-content {
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #333;
+  border-top: 1px solid #e9ecef;
 }
 
 .question-content {

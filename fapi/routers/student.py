@@ -793,6 +793,7 @@ def get_exam_result(
             "file_description": question.file_description,
             "uuid": question.uuid,
             "sub_questions_str": question.sub_questions_str,
+            "reference_answer": question.reference_answer,
             "student_answer": {
                 "id": student_answer.id if student_answer else None,
                 "answer_text": student_answer.answer_text if student_answer else None,

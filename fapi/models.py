@@ -184,6 +184,7 @@ class Question(Base):
     required_files = Column(Text().with_variant(Text(4294967295), 'mysql'))  # JSON格式存储多个文件要求
     # 资料文件相关字段
     material_files = Column(Text().with_variant(Text(4294967295), 'mysql'))  # JSON格式存储资料文件
+    reference_answer = Column(Text, nullable=True)
     exam = relationship("Exam", back_populates="questions")
     
 

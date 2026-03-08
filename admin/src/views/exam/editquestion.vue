@@ -240,6 +240,44 @@
           </el-button>
         </div>
       </el-form-item>
+
+      <!-- 参考答案 -->
+      <el-form-item label="参考答案">
+        <div class="markdown-editor-container">
+          <div class="editor-tabs">
+            <el-button
+              :class="['tab-btn', { active: answerEditorMode === 'edit' }]"
+              size="small"
+              @click="answerEditorMode = 'edit'"
+            >
+              编辑
+            </el-button>
+            <el-button
+              :class="['tab-btn', { active: answerEditorMode === 'preview' }]"
+              size="small"
+              @click="answerEditorMode = 'preview'"
+            >
+              预览
+            </el-button>
+          </div>
+
+          <div v-if="answerEditorMode === 'edit'" class="editor-content">
+            <el-input
+              ref="answerTextarea"
+              v-model="form.reference_answer"
+              type="textarea"
+              :autosize="{ minRows: 6, maxRows: 16 }"
+              placeholder="请输入参考答案，支持Markdown语法，可直接粘贴图片"
+              @paste.native="handlePasteImage($event, 'answer')"
+            />
+          </div>
+
+          <div v-if="answerEditorMode === 'preview'" class="preview-content">
+            <div class="markdown-preview" v-html="renderedAnswerContent" />
+          </div>
+        </div>
+      </el-form-item>
+
       <el-form-item label="子问题列表">
         <div
           v-for="(sub, idx) in form.sub_questions"
@@ -385,7 +423,8 @@ export default {
         file_description: '',
         sub_questions: [],
         required_files: [], // 多文件答题要求
-        material_files: [] // 资料文件
+        material_files: [], // 资料文件
+        reference_answer: '' // 参考答案
       },
       rules: {
         content: [
@@ -399,7 +438,8 @@ export default {
         Authorization: localStorage.getItem('token') || ''
       },
       editorMode: 'edit', // 题目描述编辑器模式：edit 或 preview
-      noticeEditorMode: 'edit' // 注意事项编辑器模式：edit 或 preview
+      noticeEditorMode: 'edit', // 注意事项编辑器模式：edit 或 preview
+      answerEditorMode: 'edit' // 参考答案编辑器模式：edit 或 preview
     }
   },
   computed: {
@@ -414,6 +454,12 @@ export default {
       if (!this.form.file_description) return ''
 
       return this.renderMarkdown(this.form.file_description)
+    },
+    // Markdown渲染函数 - 参考答案
+    renderedAnswerContent() {
+      if (!this.form.reference_answer) return ''
+
+      return this.renderMarkdown(this.form.reference_answer)
     }
   },
   created() {
@@ -522,44 +568,30 @@ export default {
               const imageMarkdown = `![图片](${imageUrl})`
 
               // 获取当前文本和光标位置
-              const textareaRef = type === 'content' ? this.$refs.contentTextarea : this.$refs.noticeTextarea
+              const refMap = { content: this.$refs.contentTextarea, notice: this.$refs.noticeTextarea, answer: this.$refs.answerTextarea }
+              const fieldMap = { content: 'content', notice: 'file_description', answer: 'reference_answer' }
+              const textareaRef = refMap[type]
+              const fieldName = fieldMap[type]
               if (textareaRef) {
                 const textarea = textareaRef.$el.querySelector('textarea')
                 if (textarea) {
                   const start = textarea.selectionStart
                   const end = textarea.selectionEnd
-                  const text = type === 'content' ? this.form.content : this.form.file_description
+                  const text = this.form[fieldName]
 
-                  // 在光标位置插入图片 markdown
                   const newText = text.substring(0, start) + imageMarkdown + text.substring(end)
+                  this.form[fieldName] = newText
 
-                  if (type === 'content') {
-                    this.form.content = newText
-                  } else {
-                    this.form.file_description = newText
-                  }
-
-                  // 设置光标位置到插入内容之后
                   this.$nextTick(() => {
                     const newPosition = start + imageMarkdown.length
                     textarea.setSelectionRange(newPosition, newPosition)
                     textarea.focus()
                   })
                 } else {
-                  // 如果没有找到 textarea，直接追加到末尾
-                  if (type === 'content') {
-                    this.form.content += (this.form.content ? '\n' : '') + imageMarkdown
-                  } else {
-                    this.form.file_description += (this.form.file_description ? '\n' : '') + imageMarkdown
-                  }
+                  this.form[fieldName] += (this.form[fieldName] ? '\n' : '') + imageMarkdown
                 }
               } else {
-                // 如果没有找到 ref，直接追加到末尾
-                if (type === 'content') {
-                  this.form.content += (this.form.content ? '\n' : '') + imageMarkdown
-                } else {
-                  this.form.file_description += (this.form.file_description ? '\n' : '') + imageMarkdown
-                }
+                this.form[fieldName] += (this.form[fieldName] ? '\n' : '') + imageMarkdown
               }
 
               this.$message.success('图片上传成功')

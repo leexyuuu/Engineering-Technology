@@ -57,6 +57,7 @@ class QuestionCreate(BaseModel):
     sub_questions_str: Optional[str]
     required_files: Optional[str]  # JSON格式的多文件要求
     material_files: Optional[str]  # JSON格式的资料文件
+    reference_answer: Optional[str] = None
 
 
 
