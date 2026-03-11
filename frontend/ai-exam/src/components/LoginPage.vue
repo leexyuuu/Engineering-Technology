@@ -7,7 +7,7 @@
       </div>
     </div>
 
-    <!-- 右侧白色登录表单区域 -->
+    <!-- 右侧白色登录表单 -->
     <div class="right-section">
       <div class="login-form">
         <h2 class="login-title">登录</h2>
