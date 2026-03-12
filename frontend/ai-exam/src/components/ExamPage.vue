@@ -347,10 +347,33 @@ const renderedNoticeContent = computed(() => {
   return renderMarkdown(currentQuestionData.value.file_description)
 })
 
+// 参考答案专用渲染（和后台预览保持一致，不解析 # 标题，避免 Python 注释被误渲染）
+const renderAnswerMarkdown = (content) => {
+  if (!content) return ''
+
+  let processedContent = content.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+    let fullUrl = url
+    if (!url.startsWith('http')) {
+      if (url.startsWith('/api')) { fullUrl = url }
+      else if (url.startsWith('/')) { fullUrl = `/api${url}` }
+      else { fullUrl = `/api/${url}` }
+    }
+    return `<img src="${fullUrl}" alt="${alt || '图片'}" style="max-width: 100%; height: auto; margin: 10px 0;" />`
+  })
+
+  processedContent = processedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+
+  return processedContent
+    .replace(/^[-*]\s*(.*)$/gim, '<div class="list-item">- $1</div>')
+    .replace(/^([^-*].*)$/gim, '<div class="paragraph">$1</div>')
+    .replace(/\n\s*\n/g, '')
+    .replace(/<div class="paragraph"><\/div>/g, '')
+}
+
 // 渲染后的内容 - 参考答案
 const renderedAnswerContent = computed(() => {
   if (!currentQuestionData.value?.reference_answer) return ''
-  return renderMarkdown(currentQuestionData.value.reference_answer)
+  return renderAnswerMarkdown(currentQuestionData.value.reference_answer)
 })
 
 const showAnswer = ref(false)
