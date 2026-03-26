@@ -1,0 +1,17 @@
+<canvas type="2d" id="myCanvas" style="width: 100px; height: 100px; position: fixed; left: -9999px;"></canvas>
+
+<view class="container">
+  <view class="event-list">
+    <view wx:for="{{events}}" wx:key="title" 
+          class="event-card" 
+          style="background-color: {{item.backgroundColor}}">
+      <view class="event-content">
+        <view class="event-title">{{item.title}}</view>
+        <view class="event-desc">{{item.desc}}</view>
+        <view class="event-participants">{{item.participants}}人报名</view>
+        <view wx:if="{{item.isHot}}" class="hot-tag">热门</view>
+      </view>
+      <image class="event-image" src="{{item.image}}" mode="aspectFit"></image>
+    </view>
+  </view>
+</view> 

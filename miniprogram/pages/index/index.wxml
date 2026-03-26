@@ -1,0 +1,114 @@
+<view class="container">
+  <view class="step-card {{todaySteps >= 7000 ? 'achieved' : ''}}">
+    <view class="card-header">
+      <view class="header-left">
+        <image class="step-icon" src="{{avatarUrl || '/images/step.png'}}" mode="{{avatarUrl ? 'aspectFill' : 'aspectFit'}}"></image>
+        <view class="header-text">
+          <text class="title">今日步数</text>
+          <text class="subtitle">今天消耗的卡路里数</text>
+        </view>
+      </view>
+      <!-- 同步状态指示器 -->
+      <view class="sync-indicator">
+        <view wx:if="{{syncStatus === 'loading'}}" class="sync-loading">
+          <text class="sync-text">同步中</text>
+          <text class="dot dot1">·</text>
+          <text class="dot dot2">·</text>
+          <text class="dot dot3">·</text>
+        </view>
+        <view wx:elif="{{syncStatus === 'success'}}" class="sync-status">数据已同步</view>
+        <view wx:elif="{{syncStatus === 'error'}}" class="sync-status" bindtap="retrySync">请重试</view>
+      </view>
+    </view>
+
+    <view class="step-content">
+      <view class="progress-container">
+        <!-- 背景半圆 -->
+        <view class="semi-circle-bg"></view>
+        <!-- 进度条半圆 -->
+        <view class="semi-circle-progress" style="transform: rotate({{progressRotation}}deg)"></view>
+        <!-- 步数显示 -->
+        <view class="step-number">
+          <text class="number">{{todaySteps}}</text>
+          <text class="unit">步</text>
+        </view>
+      </view>
+
+      <view class="step-details">
+        <view class="detail-item">
+          <text class="label">里程</text>
+          <view class="value">
+            <text class="number">{{dailyDistance}}</text>
+            <text class="unit">公里</text>
+          </view>
+        </view>
+        <view class="detail-item">
+          <text class="label">消耗卡路里</text>
+          <view class="value">
+            <text class="number">{{calories}}</text>
+            <text class="unit">{{calories >= 7000 ? '万大卡' : '大卡'}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="step-details-section">
+    <view class="details-row">
+      <view class="detail-box">
+        <text class="detail-title">30日总步数</text>
+        <view class="detail-value">
+          <text class="number">{{totalSteps}}</text>
+          <text class="unit">步</text>
+        </view>
+      </view>
+      <view class="detail-box">
+        <text class="detail-title">30日总消耗</text>
+        <view class="detail-value">
+          <text class="number">{{totalCalories}}</text>
+          <text class="unit">{{totalCalories >= 7000 ? '万大卡' : '大卡'}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="details-row">
+      <view class="detail-box">
+        <text class="detail-title">30日总里程</text>
+        <view class="detail-value">
+          <text class="number">{{totalDistance}}</text>
+          <text class="unit">公里</text>
+        </view>
+      </view>
+      <view class="detail-box">
+        <text class="detail-title">本月达标总天数</text>
+        <view class="detail-value">
+          <image wx:if="{{monthlyAchievedDays < 22}}" class="calories-icon" src="/images/calories.png"></image>
+          <text class="number {{monthlyAchievedDays >= 22 ? 'achieved-number' : ''}}">{{monthlyAchievedDays}}</text>
+          <text class="unit {{monthlyAchievedDays >= 22 ? 'achieved-unit' : ''}}">天</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="daily-record-section">
+    <view class="record-list">
+      <view class="record-item" wx:for="{{recordList}}" wx:key="date">
+        <view class="date-section">
+          <text class="date">{{item.date}}</text>
+          <text class="weekday">{{item.weekDay}}</text>
+        </view>
+
+        <view class="daily-record" style="background: {{item.background}}">
+          <view class="record-left">
+            <image class="walk-icon" src="/images/walk.png"></image>
+            <text class="steps">{{item.steps}}步</text>
+          </view>
+          <view class="record-right">
+            <image class="distance-icon" src="/images/distance.png"></image>
+            <text class="distance">≈{{item.distance}}公里</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

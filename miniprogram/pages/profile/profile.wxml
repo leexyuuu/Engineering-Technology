@@ -1,0 +1,98 @@
+<view class="profile-container">
+  <!-- 用户信息区域 -->
+  <view class="user-info">
+    <button class="avatar-wrapper" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
+      <image class="avatar" src="{{userInfo.avatarUrl || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+    </button>
+
+    <view class="user-detail">
+      <text class="nickname">{{userInfo.name}}</text>
+      <view class="level-tag" wx:if="{{userInfo.department}}">{{userInfo.department}}</view>
+      <view class="level-tag" wx:else>未设置部门</view>
+    </view>
+  </view>
+
+  <!-- 数据卡片区域 -->
+  <view class="data-cards">
+    <!-- 运动记录卡片 -->
+    <view class="card sport-record">
+      <view class="card-title">运动记录</view>
+      <view class="card-content">
+        <view class="record-item">
+          <text class="label">累计运动</text>
+          <view class="value">
+            <text class="number">1010</text>
+            <text class="unit">天</text>
+          </view>
+        </view>
+        <view class="record-item">
+          <text class="label">最近健走</text>
+          <view class="value">
+            <text class="number">185</text>
+            <text class="unit">公里</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 奖章卡片 -->
+    <view class="card medal-card">
+      <view class="card-title">赛事</view>
+      <view class="card-content">
+        <image class="medal-icon" src="/images/gold-medal.png" mode="aspectFit"></image>
+        <text class="medal-count">共参加 211 场</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 功能图标区域 -->
+  <view class="feature-grid">
+    <view class="feature-item">
+      <image class="feature-icon" src="/images/stats.png" mode="aspectFit"></image>
+      <text class="feature-text">运动统计</text>
+    </view>
+    <view class="feature-item">
+      <image class="feature-icon" src="/images/level.png" mode="aspectFit"></image>
+      <text class="feature-text">运动等级</text>
+    </view>
+    <view class="feature-item">
+      <image class="feature-icon" src="/images/archive.png" mode="aspectFit"></image>
+      <text class="feature-text">成绩档案</text>
+    </view>
+    <view class="feature-item">
+      <image class="feature-icon" src="/images/body.png" mode="aspectFit"></image>
+      <text class="feature-text">身体数据</text>
+    </view>
+  </view>
+
+  <!-- 设置菜单 -->
+  <view class="settings-menu">
+    <view class="menu-item">
+      <image class="menu-icon" src="/images/group.png" mode="aspectFit"></image>
+      <text class="menu-text">我的运动团</text>
+      <image class="arrow-icon" src="/images/arrow.png" mode="aspectFit"></image>
+    </view>
+    <view class="menu-item">
+      <image class="menu-icon" src="/images/help.png" mode="aspectFit"></image>
+      <text class="menu-text">帮助与反馈</text>
+      <image class="arrow-icon" src="/images/arrow.png" mode="aspectFit"></image>
+    </view>
+    <view class="menu-item">
+      <image class="menu-icon" src="/images/settings.png" mode="aspectFit"></image>
+      <text class="menu-text">设置</text>
+      <image class="arrow-icon" src="/images/arrow.png" mode="aspectFit"></image>
+    </view>
+    
+    <!-- 管理员导出数据按钮 -->
+    <view class="menu-item" wx:if="{{userInfo.role === 1}}" bindtap="onExportData">
+      <image class="menu-icon" src="/images/stats.png" mode="aspectFit"></image>
+      <text class="menu-text">导出数据</text>
+      <image class="arrow-icon" src="/images/arrow.png" mode="aspectFit"></image>
+    </view>
+  </view>
+
+  <!-- 退出登录按钮（移到外面作为独立元素） -->
+  <view class="logout" bindtap="handleLogout">
+    <text class="logout-text">退出登录</text>
+  </view>
+</view>

@@ -1,0 +1,196 @@
+/* pages/community/community.wxss */
+.container {
+  min-height: 100vh;
+  padding: 15px;
+  position: relative;
+  background: linear-gradient(180deg, #1296DB 0%, #0C77B0 100%);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  margin-bottom: 20px;
+}
+
+.title {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.back-icon, .more-icon {
+  color: #fff;
+  font-size: 24px;
+}
+
+.top-three {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 240px;
+  position: relative;
+  z-index: 2;
+  margin-bottom: -10px;
+}
+
+.rank-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  margin: 0 15px;
+}
+
+/* 头像和文字的容器 */
+.rank-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 50px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.avatar-container {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  z-index: 2;
+}
+
+.name {
+  color: #fff;
+  font-size: 16px;
+  margin-bottom: 4px;
+  position: relative;
+  z-index: 2;
+}
+
+.score {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  position: relative;
+  z-index: 2;
+}
+
+.podium {
+  position: absolute;
+  bottom: -20px;
+  width: 70px;
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  color: #fff;
+  font-size: 24px;
+  font-weight: bold;
+  z-index: 1;
+  padding-top: 15px;
+}
+
+/* 第一名底座 - 红色 */
+.first .podium {
+  background: rgb(255, 99, 99);
+  height: 100px;
+}
+
+/* 第二名底座 - 浅蓝色 */
+.second .podium {
+  background: rgb(91, 195, 255);
+  height: 80px;
+}
+
+/* 第三名底座 - 浅紫色 */
+.third .podium {
+  background: rgb(149, 125, 255);
+  height: 60px;
+}
+
+/* 第二名位置 */
+.second .rank-content {
+  position: relative;
+  top: -30px;
+}
+
+/* 第一名位置 */
+.first .rank-content {
+  position: relative;
+  top: -50px;
+}
+
+/* 第三名位置 */
+.third .rank-content {
+  position: relative;
+  top: -10px;
+}
+
+/* 调整第一名的大小 */
+.first {
+  transform: scale(1.1);
+}
+
+.rank-list {
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
+  position: relative;
+  min-height: 60vh;
+  z-index: 3;
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  left: 0;
+  right: 0;
+  margin: 0 -12px;
+  padding: 20px 12px;
+  box-sizing: border-box;
+}
+
+.rank-list .rank-item {
+  flex-direction: row;
+  justify-content: flex-start;
+  padding: 12px 0;
+  margin: 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.rank-list .avatar {
+  width: 40px;
+  height: 40px;
+  margin: 0 12px;
+}
+
+.rank-number {
+  color: #333;
+  font-size: 16px;
+  width: 30px;
+  text-align: center;
+}
+
+.rank-list .name {
+  color: #333;
+  flex: 1;
+  text-align: left;
+  margin: 0;
+}
+
+.rank-list .score {
+  color: #666;
+}
+
+/* 奖牌图标样式 */
+.medal-icon {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 24px;
+  height: 24px;
+  z-index: 3;
+}

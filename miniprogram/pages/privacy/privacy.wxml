@@ -1,0 +1,83 @@
+<view class="container">
+  <view class="content">
+    <view class="section">
+      <text class="section-title">一、隐私保护承诺</text>
+      <text class="section-text">上海杉达学院（以下简称"我们"）非常重视您的隐私保护。本隐私政策说明了上海杉达学院健步走小程序（以下简称"本小程序"）如何收集、使用、存储和保护您的个人信息。请您仔细阅读本隐私政策。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">二、信息收集</text>
+      <text class="section-text">1. 账户信息：我们会收集您的姓名、工号等身份验证信息，用于账户注册和登录验证。</text>
+      <text class="section-text">2. 微信信息：我们会获取您的微信OpenID，用于身份识别和账号关联。</text>
+      <text class="section-text">3. 运动数据：我们会收集您的步数、运动时间、运动距离等运动健康数据，这些数据来源于微信运动或您的手动录入。</text>
+      <text class="section-text">4. 设备信息：我们可能会收集设备型号、操作系统版本等信息，用于改善服务体验。</text>
+      <text class="section-text">5. 使用日志：我们会记录您使用本小程序的时间、功能使用情况等日志信息。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">三、信息使用</text>
+      <text class="section-text">我们收集的信息将用于以下目的：</text>
+      <text class="section-text">1. 提供健步走服务：记录和管理您的运动数据，生成统计报告和健康排行榜。</text>
+      <text class="section-text">2. 身份验证：验证您的教职工身份，确保服务的合法使用。</text>
+      <text class="section-text">3. 服务改进：分析使用数据，优化小程序功能和用户体验。</text>
+      <text class="section-text">4. 赛事活动：组织和管理健步走相关活动，展示排名和统计数据（经您同意的范围内）。</text>
+      <text class="section-text">5. 法律合规：遵守相关法律法规要求，配合有关部门的调查。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">四、信息存储</text>
+      <text class="section-text">1. 您的个人信息和运动数据将存储在安全可靠的服务器中，我们采用技术和管理措施保护数据安全。</text>
+      <text class="section-text">2. 数据存储地点：中华人民共和国境内。</text>
+      <text class="section-text">3. 数据保留期限：在您使用本小程序期间及法律规定的期限内，我们将保留您的数据。如您注销账户，我们将在合理期限内删除您的个人信息。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">五、信息共享与披露</text>
+      <text class="section-text">1. 我们不会向第三方出售、出租或以其他方式披露您的个人信息，除非：</text>
+      <text class="section-text">   - 获得您的明确同意；</text>
+      <text class="section-text">   - 法律法规要求；</text>
+      <text class="section-text">   - 为履行我们的服务或保护我们的合法权益。</text>
+      <text class="section-text">2. 我们可能会与学校内部相关部门共享必要的匿名化统计数据，用于健康管理和服务改进。</text>
+      <text class="section-text">3. 我们可能使用第三方服务提供商（如云服务）来存储和处理数据，这些服务商需要遵守严格的保密义务。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">六、您的权利</text>
+      <text class="section-text">您对自己的个人信息享有以下权利：</text>
+      <text class="section-text">1. 访问权：您可以查看自己的个人信息和运动数据。</text>
+      <text class="section-text">2. 更正权：您可以更正不准确或不完整的个人信息。</text>
+      <text class="section-text">3. 删除权：您可以在特定情况下要求删除个人信息（需符合法律规定）。</text>
+      <text class="section-text">4. 撤回同意：您可以撤回对个人信息处理的同意，但撤回不影响撤回前基于同意进行的处理。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">七、信息安全</text>
+      <text class="section-text">我们采用行业标准的安全技术和管理措施来保护您的个人信息，包括但不限于：</text>
+      <text class="section-text">1. 数据加密：对敏感信息进行加密传输和存储。</text>
+      <text class="section-text">2. 访问控制：严格控制对数据的访问权限。</text>
+      <text class="section-text">3. 安全审计：定期进行安全检查和漏洞修复。</text>
+      <text class="section-text">4. 员工培训：对接触个人信息的员工进行保密培训。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">八、未成年人保护</text>
+      <text class="section-text">本小程序面向上海杉达学院教职工提供服务。如发现未成年人使用，我们将立即采取相应措施。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">九、隐私政策更新</text>
+      <text class="section-text">我们可能会根据法律法规变化和业务需要更新本隐私政策。更新后的隐私政策将在本小程序内公布，并通过适当方式通知您。继续使用本小程序即表示您接受更新后的隐私政策。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">十、联系我们</text>
+      <text class="section-text">如果您对本隐私政策有任何疑问、意见或建议，或需要行使相关权利，请联系上海杉达学院相关部门。</text>
+    </view>
+
+    <view class="footer">
+      <text class="footer-text">上海杉达学院</text>
+      <text class="footer-text">2024年</text>
+    </view>
+  </view>
+</view>
+

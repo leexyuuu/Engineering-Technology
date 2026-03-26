@@ -1,0 +1,65 @@
+<view class="container">
+  <!-- 顶部标题 -->
+  <view class="header-container">
+  <view class="header">
+    <view class="back-icon">
+      <text class="cuIcon-back"></text>
+    </view>
+    <text class="title">排行榜</text>
+    <view class="more-icon">
+      <text class="cuIcon-more"></text>
+    </view>
+  </view>
+
+  <!-- 前三名展示区 -->
+  <view class="top-three">
+    <!-- 第二名 -->
+    <view class="rank-item second">
+      <view class="rank-content">
+        <view class="avatar-container">
+          <image class="avatar" src="/images/avatar2.png" mode="aspectFill"></image>
+          <image class="medal-icon" src="/images/silver-medal.png" mode="aspectFill"></image>
+        </view>
+        <text class="name">Jennie</text>
+        <text class="score">25000</text>
+      </view>
+      <view class="podium" style="height: 80px;">2</view>
+    </view>
+    
+    <!-- 第一名 -->
+    <view class="rank-item first">
+      <view class="rank-content">
+        <view class="avatar-container">
+          <image class="avatar" src="/images/avatar1.png" mode="aspectFill"></image>
+          <image class="medal-icon" src="/images/gold-medal.png" mode="aspectFill"></image>
+        </view>
+        <text class="name">Mino</text>
+        <text class="score">38000</text>
+      </view>
+      <view class="podium" style="height: 100px;">1</view>
+    </view>
+    
+    <!-- 第三名 -->
+    <view class="rank-item third">
+      <view class="rank-content">
+        <view class="avatar-container">
+          <image class="avatar" src="/images/avatar3.png" mode="aspectFill"></image>
+          <image class="medal-icon" src="/images/bronze-medal.png" mode="aspectFill"></image>
+        </view>
+        <text class="name">Vinxen</text>
+        <text class="score">22000</text>
+      </view>
+      <view class="podium" style="height: 60px;">3</view>
+    </view>
+  </view>
+</view>
+  <!-- 排行榜列表 -->
+  <view class="rank-list">
+    <view class="rank-item" wx:for="{{[1,2,3,1,2,3]}}" wx:key="index">
+      <text class="rank-number">{{item}}</text>
+      <image class="avatar" src="/images/avatar{{item}}.png" mode="aspectFill"></image>
+      <text class="name">{{names[index]}}</text>
+      <text class="score">{{scores[index]}}</text>
+    </view>
+  </view>
+</view> 

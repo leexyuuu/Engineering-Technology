@@ -1,0 +1,46 @@
+<view class="container">
+  <view class="header">
+    <view class="logo-container">
+      <image class="logo" src="/images/logo.jpg" mode="aspectFill"></image>
+    </view>
+    <text class="title">登录后，体验健康生活</text>
+  </view>
+
+  <view class="form-container">
+    <form bindsubmit="handleSubmit">
+      <view class="form-item">
+        <input 
+          class="input" 
+          name="employeeId" 
+          placeholder="请输入工号" 
+          placeholder-class="input-placeholder"
+          type="text"
+        />
+      </view>
+      
+      <view class="form-item">
+        <input 
+          class="input" 
+          name="name" 
+          placeholder="请输入姓名" 
+          placeholder-class="input-placeholder"
+          type="text"
+        />
+      </view>
+
+      <button class="login-btn" form-type="submit">微信登录</button>
+    </form>
+
+    <view class="privacy-policy">
+      <checkbox-group bindchange="handlePrivacyChange">
+        <label class="policy-label">
+          <checkbox value="agree" checked="{{isAgreePolicy}}" />
+          <text class="policy-text">已阅读并同意</text>
+          <text class="policy-link" catchtap="navigateToAgreement">用户协议</text>
+          <text class="policy-text">和</text>
+          <text class="policy-link" catchtap="navigateToPrivacy">隐私政策</text>
+        </label>
+      </checkbox-group>
+    </view>
+  </view>
+</view> 

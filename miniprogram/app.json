@@ -1,0 +1,57 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/register/register",
+    "pages/events/events",
+    "pages/community/community",
+    "pages/profile/profile",
+    "pages/export/export",
+    "pages/agreement/agreement",
+    "pages/privacy/privacy"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#fff",
+    "navigationBarTitleText": "杉达学院健步走",
+    "navigationBarTextStyle": "black"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#1296db",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "images/tab/home.png",
+        "selectedIconPath": "images/tab/home.png"
+      },
+      {
+        "pagePath": "pages/events/events",
+        "text": "赛事",
+        "iconPath": "images/tab/event.png",
+        "selectedIconPath": "images/tab/event.png"
+      },
+      {
+        "pagePath": "pages/community/community",
+        "text": "杉达人",
+        "iconPath": "images/tab/community.png",
+        "selectedIconPath": "images/tab/community.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "images/tab/profile.png",
+        "selectedIconPath": "images/tab/profile.png"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userInfo": {
+      "desc": "你的用户信息将用于显示头像和昵称"
+    },
+    "scope.werun": {
+      "desc": "你的运动步数信息将用于健步走排名"
+    }
+  }
+}

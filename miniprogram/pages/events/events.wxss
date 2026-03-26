@@ -1,0 +1,76 @@
+/* pages/events/events.wxss */
+.container {
+  padding: 4px 8px;
+  background: #f8f8f8;
+  min-height: 100vh;
+  display: flex;
+}
+
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.event-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  position: relative;
+  overflow: hidden;
+  height: 100px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.event-card:last-child {
+  margin-bottom: 0;
+}
+
+.event-content {
+  flex: 1;
+  margin-right: 16px;
+  position: relative;
+  z-index: 2;
+}
+
+.event-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.event-desc {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.event-participants {
+  font-size: 12px;
+  color: #999;
+}
+
+.event-image {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  z-index: 2;
+}
+
+/* 热门标签 */
+.hot-tag {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #FF6B6B;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 0 12px;
+  font-size: 11px;
+}

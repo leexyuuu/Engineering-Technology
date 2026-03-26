@@ -1,0 +1,60 @@
+<view class="container">
+  <view class="content">
+    <view class="section">
+      <text class="section-title">一、协议的接受</text>
+      <text class="section-text">欢迎使用上海杉达学院健步走小程序（以下简称"本小程序"）。在使用本小程序之前，请您仔细阅读本用户协议（以下简称"本协议"）。当您完成注册、登录或使用本小程序时，即表示您已充分理解并同意接受本协议的全部内容。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">二、服务说明</text>
+      <text class="section-text">1. 本小程序是由上海杉达学院开发，面向全校教职工提供的健步走健康管理服务平台。</text>
+      <text class="section-text">2. 本小程序主要功能包括但不限于：步数记录、运动数据统计、健康排行榜、赛事活动等。</text>
+      <text class="section-text">3. 本小程序仅限上海杉达学院教职工使用，使用前需进行身份验证。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">三、用户权利与义务</text>
+      <text class="section-text">1. 您有权使用本小程序提供的各项功能和服务。</text>
+      <text class="section-text">2. 您应当使用真实、准确的个人信息进行注册和登录。</text>
+      <text class="section-text">3. 您应当妥善保管您的账号信息，不得将账号转借、转让给他人使用。</text>
+      <text class="section-text">4. 您应当遵守国家法律法规、学校规章制度以及本协议的相关规定。</text>
+      <text class="section-text">5. 您不得利用本小程序从事任何违法违规活动或损害他人合法权益的行为。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">四、数据使用</text>
+      <text class="section-text">1. 本小程序会收集和使用您的运动数据（如步数、运动时间等）以提供服务。</text>
+      <text class="section-text">2. 您的个人信息和数据将严格按照相关法律法规和隐私政策的要求进行处理和保护。</text>
+      <text class="section-text">3. 学校可能会将匿名化的统计数据进行研究分析，用于改善服务质量和健康管理。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">五、服务变更与终止</text>
+      <text class="section-text">1. 上海杉达学院保留随时修改、中断或终止本小程序服务的权利，无需事先通知。</text>
+      <text class="section-text">2. 如您违反本协议的规定，学校有权立即终止向您提供服务，并保留追究法律责任的权利。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">六、免责声明</text>
+      <text class="section-text">1. 本小程序提供的运动数据仅供参考，不构成医疗建议或健康诊断。</text>
+      <text class="section-text">2. 用户在使用本小程序进行运动时应根据自身身体状况合理安排，量力而行。</text>
+      <text class="section-text">3. 因网络故障、系统维护等原因导致的服务中断，本小程序不承担责任。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">七、协议修改</text>
+      <text class="section-text">本协议如有变更，将通过小程序内公告或其他方式通知您。您继续使用本小程序即视为接受修改后的协议。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">八、联系方式</text>
+      <text class="section-text">如有疑问或建议，请联系上海杉达学院相关部门。</text>
+    </view>
+
+    <view class="footer">
+      <text class="footer-text">上海杉达学院</text>
+      <text class="footer-text">2024年</text>
+    </view>
+  </view>
+</view>
+
