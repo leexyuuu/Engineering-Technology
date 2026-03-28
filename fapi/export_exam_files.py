@@ -28,7 +28,7 @@ import shutil
 import sys
 from datetime import date, datetime
 
-from sqlalchemy import create_engine, func, cast, Date
+from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker, Session
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -115,7 +115,12 @@ def export(exam_id: int, output_dir: str, target_date: date | None = None):
 
     query = db.query(StudentExam).filter(StudentExam.exam_id == exam_id)
     if target_date:
-        query = query.filter(cast(StudentExam.start_time, Date) == target_date)
+        day_start = datetime.combine(target_date, datetime.min.time())
+        day_end = datetime.combine(target_date, datetime.max.time())
+        query = query.filter(
+            StudentExam.start_time >= day_start,
+            StudentExam.start_time <= day_end,
+        )
     student_exams = query.all()
 
     if not student_exams:
