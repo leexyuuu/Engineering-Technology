@@ -34,16 +34,18 @@ from sqlalchemy.orm import sessionmaker, Session
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from models import Exam, Question, Student, StudentExam, StudentAnswer
 
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(SCRIPT_DIR, "uploads")
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "mysql+pymysql://root:your_password@localhost:3306/mock_exam?charset=utf8mb4",
-)
+SQLITE_PATH = os.path.join(SCRIPT_DIR, "test.db")
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{SQLITE_PATH}")
 
 
 def get_session() -> Session:
-    engine = create_engine(DATABASE_URL)
+    connect_args = {}
+    if DATABASE_URL.startswith("sqlite"):
+        connect_args["check_same_thread"] = False
+    engine = create_engine(DATABASE_URL, connect_args=connect_args)
     return sessionmaker(bind=engine)()
 
 
