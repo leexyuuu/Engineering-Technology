@@ -126,7 +126,7 @@
           </div>
 
           <!-- 查看答案 -->
-          <div v-if="currentQuestionData?.reference_answer" class="reference-answer-section">
+          <div v-if="canShowReferenceAnswer" class="reference-answer-section">
             <div class="reference-answer-toggle" @click="showAnswer = !showAnswer">
               <span class="toggle-icon">{{ showAnswer ? '▼' : '▶' }}</span>
               <span class="toggle-text">查看答案</span>
@@ -196,6 +196,9 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+
+// 「人工智能训练师三级考试」临时采用这种方案，针对尾号05的账号当做模拟考试，此时无法查看答案
+const EXAM_ID_NO_REFERENCE_ANSWER_FOR_PHONE_SUFFIX_05 = 3
 
 
 const currentQuestion = ref(1)
@@ -392,6 +395,20 @@ const currentQuestionData = computed(() => {
   }
   
   return found
+})
+
+const canShowReferenceAnswer = computed(() => {
+  if (!currentQuestionData.value?.reference_answer) return false
+  const examId = examData.value?.exam?.id
+  const phone = studentData.value?.phone != null ? String(studentData.value.phone) : ''
+  if (
+    examId === EXAM_ID_NO_REFERENCE_ANSWER_FOR_PHONE_SUFFIX_05 &&
+    phone.length >= 2 &&
+    phone.slice(-2) === '05'
+  ) {
+    return false
+  }
+  return true
 })
 
 // 计算当前题目的required_files
