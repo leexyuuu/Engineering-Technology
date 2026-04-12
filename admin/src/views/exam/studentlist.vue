@@ -2,10 +2,13 @@
   <div class="app-container">
     <h3>考试：{{ examName }}</h3>
 
-    <!-- 添加Excel导入功能 -->
+    <!-- 操作栏 -->
     <div class="import-section" style="margin-bottom: 20px;">
       <el-button type="primary" icon="el-icon-upload" @click="showImportDialog = true">
         导入学生列表
+      </el-button>
+      <el-button type="warning" icon="el-icon-magic-stick" :loading="batchGrading" @click="handleBatchGrade">
+        批量AI阅卷
       </el-button>
     </div>
 
@@ -36,18 +39,62 @@
           {{ scope.row.duration_minutes ? scope.row.duration_minutes + '分钟' : '-' }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="280">
+      <el-table-column label="阅卷状态" width="110">
         <template slot-scope="scope">
-          <el-button size="mini" @click="handleViewDetail(scope.row)">查看详情</el-button>
-          <el-button
-            size="mini"
-            type="success"
-            icon="el-icon-download"
-            :loading="scope.row.downloading"
-            @click="handleDownloadFiles(scope.row)"
-          >
-            下载文件
-          </el-button>
+          <el-tag :type="getGradingStatusType(scope.row.grading_status)" size="small">
+            {{ getGradingStatusText(scope.row.grading_status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="AI评分" width="80">
+        <template slot-scope="scope">
+          <span v-if="scope.row.ai_total_score != null">{{ scope.row.ai_total_score }}</span>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="最终分数" width="80">
+        <template slot-scope="scope">
+          <span v-if="scope.row.final_total_score != null" style="color: #E6A23C; font-weight: bold;">{{ scope.row.final_total_score }}</span>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="300">
+        <template slot-scope="scope">
+          <div class="action-buttons">
+            <div class="action-row">
+              <el-button size="mini" class="btn-fixed" @click="handleViewDetail(scope.row)">查看详情</el-button>
+              <el-button
+                v-if="scope.row.grading_status !== 'not_graded'"
+                size="mini"
+                type="primary"
+                icon="el-icon-view"
+                @click="handleViewGrading(scope.row)"
+              >
+                评分详情
+              </el-button>
+              <el-button
+                size="mini"
+                type="warning"
+                icon="el-icon-magic-stick"
+                :loading="scope.row.grading"
+                :disabled="scope.row.status !== 'submitted'"
+                @click="handleGradeSingle(scope.row)"
+              >
+                AI阅卷
+              </el-button>
+            </div>
+            <div class="action-row">
+              <el-button
+                size="mini"
+                type="success"
+                class="btn-fixed"
+                :loading="scope.row.downloading"
+                @click="handleDownloadFiles(scope.row)"
+              >
+                下载文件
+              </el-button>
+            </div>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -120,7 +167,7 @@
 </template>
 
 <script>
-import { fetchExamStudentList, fetchExam, importStudentsToExam, downloadStudentFiles } from '@/api/exam'
+import { fetchExamStudentList, fetchExam, importStudentsToExam, downloadStudentFiles, triggerGradeSingle, triggerGradeBatch } from '@/api/exam'
 import UploadExcelComponent from '@/components/UploadExcel/index.vue'
 
 export default {
@@ -139,7 +186,8 @@ export default {
       showImportDialog: false,
       importPreview: [],
       importLoading: false,
-      downloadingStudentIds: new Set() // 用于跟踪正在下载的学生ID
+      downloadingStudentIds: new Set(),
+      batchGrading: false
     }
   },
   created() {
@@ -278,6 +326,52 @@ export default {
         this.importLoading = false
       })
     },
+    getGradingStatusType(status) {
+      const map = {
+        'not_graded': 'info',
+        'ai_grading': 'warning',
+        'ai_graded': '',
+        'reviewed': 'success'
+      }
+      return map[status] || 'info'
+    },
+    getGradingStatusText(status) {
+      const map = {
+        'not_graded': '未评分',
+        'ai_grading': 'AI评分中',
+        'ai_graded': '待复核',
+        'reviewed': '已确认'
+      }
+      return map[status] || '未评分'
+    },
+    handleGradeSingle(row) {
+      this.$confirm('确认对该学生进行AI阅卷？阅卷将在后台执行，请稍后刷新查看结果。', '提示', { type: 'warning' }).then(() => {
+        triggerGradeSingle(row.student_exam_id).then(res => {
+          this.$message.success(res.data.message || 'AI阅卷已开始')
+          this.fetchList()
+        }).catch(error => {
+          this.$message.error('AI阅卷失败: ' + (error.message || '未知错误'))
+        })
+      }).catch(() => {})
+    },
+    handleViewGrading(row) {
+      this.$router.push({
+        path: `/exam/grading/${this.exam_id}/${row.student_exam_id}`
+      })
+    },
+    handleBatchGrade() {
+      this.$confirm('确认对所有已提交的学生进行AI批量阅卷？阅卷将在后台执行，请稍后刷新查看结果。', '批量AI阅卷', { type: 'warning' }).then(() => {
+        this.batchGrading = true
+        triggerGradeBatch(this.exam_id).then(res => {
+          this.$message.success(res.data.message || 'AI批量阅卷已开始')
+          this.fetchList()
+        }).catch(error => {
+          this.$message.error('批量阅卷失败: ' + (error.message || '未知错误'))
+        }).finally(() => {
+          this.batchGrading = false
+        })
+      }).catch(() => {})
+    },
     handleDownloadFiles(row) {
       // 检查是否正在下载
       if (this.downloadingStudentIds.has(row.id)) {
@@ -309,6 +403,26 @@ export default {
 </script>
 
 <style scoped>
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.action-row {
+  display: flex;
+  align-items: center;
+}
+
+.action-row + .action-row {
+  margin-top: 6px;
+}
+
+.btn-fixed {
+  min-width: 80px;
+  text-align: center;
+}
 
 .dialog-footer{
   height: 30px;
