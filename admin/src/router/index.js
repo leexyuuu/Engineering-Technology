@@ -146,6 +146,13 @@ export const asyncRoutes = [
         name: '考试详情',
         meta: { title: '考试详情', noCache: true, activeMenu: '/exam/examlist' },
         hidden: true
+      },
+      {
+        path: 'grading/:exam_id/:student_exam_id',
+        component: () => import('@/views/exam/grading'),
+        name: '阅卷复核',
+        meta: { title: '阅卷复核', noCache: true, activeMenu: '/exam/examlist' },
+        hidden: true
       }
     ]
   },

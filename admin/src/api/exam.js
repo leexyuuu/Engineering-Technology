@@ -92,7 +92,7 @@ export function createExamQuestion(data) {
   return request({
     url: '/api/exam/questions/create',
     method: 'post',
-    params: data
+    data
   })
 }
 
@@ -100,7 +100,7 @@ export function updateExamQuestion(question_id, data) {
   return request({
     url: `/api/exam/questions/${question_id}`,
     method: 'put',
-    params: data
+    data
   })
 }
 
@@ -167,6 +167,66 @@ export function importStudentsToExam(data) {
     url: '/api/exam/import-students',
     method: 'post',
     params: data
+  })
+}
+
+// ─── 阅卷相关API ───
+
+export function createOrUpdateRubric(data) {
+  return request({
+    url: '/api/grading/rubric',
+    method: 'post',
+    data
+  })
+}
+
+export function fetchRubric(question_id) {
+  return request({
+    url: `/api/grading/rubric/${question_id}`,
+    method: 'get'
+  })
+}
+
+export function fetchExamRubrics(exam_id) {
+  return request({
+    url: `/api/grading/rubrics/exam/${exam_id}`,
+    method: 'get'
+  })
+}
+
+export function triggerGradeSingle(student_exam_id) {
+  return request({
+    url: `/api/grading/grade/${student_exam_id}`,
+    method: 'post'
+  })
+}
+
+export function triggerGradeBatch(exam_id) {
+  return request({
+    url: `/api/grading/grade-batch/${exam_id}`,
+    method: 'post'
+  })
+}
+
+export function fetchGradingResults(student_exam_id) {
+  return request({
+    url: `/api/grading/results/${student_exam_id}`,
+    method: 'get'
+  })
+}
+
+export function submitReview(data) {
+  return request({
+    url: '/api/grading/review',
+    method: 'post',
+    data
+  })
+}
+
+export function finalizeGrading(student_exam_id) {
+  return request({
+    url: `/api/grading/finalize/${student_exam_id}`,
+    method: 'post'
   })
 }
 
