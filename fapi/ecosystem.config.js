@@ -6,7 +6,9 @@ module.exports = {
     cwd: '/www/wwwroot/mock-exam/fapi',
     interpreter: 'none',
     env: {
-      NODE_ENV: 'production'
+      NODE_ENV: 'production',
+      LLM_PROVIDER: 'qwen',
+      LLM_API_KEY: process.env.LLM_API_KEY || ''
     },
     error_file: '/www/wwwroot/mock-exam/logs/api-error.log',
     out_file: '/www/wwwroot/mock-exam/logs/api-out.log',
