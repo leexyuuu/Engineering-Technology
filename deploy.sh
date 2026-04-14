@@ -91,6 +91,9 @@ deploy_backend() {
     # 创建日志目录
     mkdir -p "$LOG_DIR"
 
+    # 加载环境变量（LLM_API_KEY等）
+    [ -f /etc/environment ] && source /etc/environment
+
     # 重启后端服务
     log_info "重启后端服务..."
     if pm2 describe mock-exam-api > /dev/null 2>&1; then

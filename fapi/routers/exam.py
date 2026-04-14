@@ -125,7 +125,7 @@ def update_exam(exam_id: int, exam: ExamCreate=Depends(),token: str = Header(...
 
 # 题目相关接口
 @app.post("/exam/questions/create")
-def create_question(question: QuestionCreate=Depends(), token: str = Header(..., alias="Authorization"), db: Session = Depends(get_db)):
+def create_question(question: QuestionCreate = Body(...), token: str = Header(..., alias="Authorization"), db: Session = Depends(get_db)):
     checkToken(token)
 
     db_question = Question(**question.dict())
@@ -137,7 +137,7 @@ def create_question(question: QuestionCreate=Depends(), token: str = Header(...,
     return {"code":20000,"data":db_question}
 
 @app.put("/exam/questions/{question_id}")
-def update_questions(question_id:int, question: QuestionCreate=Depends(),token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
+def update_questions(question_id:int, question: QuestionCreate = Body(...), token: str = Header(..., alias="Authorization"),  db: Session = Depends(get_db)):
     checkToken(token)
     db_exam = db.query(Question).filter(Question.id == question_id).first()
     if db_exam is None:
@@ -199,7 +199,11 @@ def read_exam_students(exam_id:int, page: int = 1, page_size: int = 20, db: Sess
             "start_time": se.start_time,
             "end_time": se.end_time,
             "status": se.status,
-            "duration_minutes": None  # 计算实际考试时长
+            "duration_minutes": None,
+            # 阅卷信息
+            "grading_status": getattr(se, 'grading_status', None) or "not_graded",
+            "ai_total_score": getattr(se, 'ai_total_score', None),
+            "final_total_score": getattr(se, 'final_total_score', None),
         }
         
         # 计算考试时长
