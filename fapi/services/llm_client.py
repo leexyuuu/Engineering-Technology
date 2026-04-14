@@ -9,13 +9,8 @@ import base64
 import httpx
 from typing import Optional
 
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "qwen")
-LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "")
-
-VISION_PROVIDER = os.getenv("VISION_PROVIDER", "")
-VISION_API_KEY = os.getenv("VISION_API_KEY", "")
-VISION_MODEL = os.getenv("VISION_MODEL", "")
+def _get_env(key, default=""):
+    return os.environ.get(key, default)
 
 PROVIDER_CONFIG = {
     "qwen": {
@@ -46,16 +41,16 @@ async def chat_completion(
     调用 LLM Chat Completion API，返回助手消息文本。
     messages 格式: [{"role": "system", "content": "..."}, {"role": "user", "content": "..."}]
     """
-    provider = LLM_PROVIDER
+    provider = _get_env("LLM_PROVIDER", "qwen")
     cfg = PROVIDER_CONFIG.get(provider)
     if not cfg:
         raise ValueError(f"Unsupported LLM provider: {provider}")
 
-    api_key = LLM_API_KEY
+    api_key = _get_env("LLM_API_KEY")
     if not api_key:
         raise ValueError("LLM_API_KEY environment variable is not set")
 
-    model = LLM_MODEL or cfg["default_model"]
+    model = _get_env("LLM_MODEL") or cfg["default_model"]
     url = f"{cfg['base_url']}/chat/completions"
 
     print(f"[LLM] 调用 {provider}/{model} ...")
@@ -96,7 +91,7 @@ async def chat_completion_json(
     调用 LLM 并要求返回 JSON，自动解析为 dict。
     对于不支持 response_format 的模型，会从文本中提取 JSON。
     """
-    provider = LLM_PROVIDER
+    provider = _get_env("LLM_PROVIDER", "qwen")
     response_format = None
     if provider in ("qwen", "deepseek", "openai"):
         response_format = {"type": "json_object"}
@@ -145,16 +140,16 @@ async def vision_completion(
     调用 Vision 模型分析图片内容。
     image_paths: 本地图片文件路径列表
     """
-    provider = VISION_PROVIDER or LLM_PROVIDER
+    provider = _get_env("VISION_PROVIDER") or _get_env("LLM_PROVIDER", "qwen")
     cfg = PROVIDER_CONFIG.get(provider)
     if not cfg:
         raise ValueError(f"Unsupported vision provider: {provider}")
 
-    api_key = VISION_API_KEY or LLM_API_KEY
+    api_key = _get_env("VISION_API_KEY") or _get_env("LLM_API_KEY")
     if not api_key:
         raise ValueError("Vision API key is not set")
 
-    model = VISION_MODEL or cfg.get("default_vision_model", cfg["default_model"])
+    model = _get_env("VISION_MODEL") or cfg.get("default_vision_model", cfg["default_model"])
     url = f"{cfg['base_url']}/chat/completions"
 
     print(f"[Vision] 调用 {provider}/{model} | 图片数: {len(image_paths)} ...")
