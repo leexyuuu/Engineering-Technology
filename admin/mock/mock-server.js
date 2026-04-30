@@ -44,12 +44,17 @@ const responseFake = (url, type, respond) => {
 }
 
 module.exports = app => {
-  // parse app.body
-  // https://expressjs.com/en/4x/api.html#req.body
-  app.use(bodyParser.json())
-  app.use(bodyParser.urlencoded({
-    extended: true
-  }))
+  // only parse body for mock routes, not for /api proxy routes
+  const parseMockOnly = (req, res, next) => {
+    if (req.path.startsWith('/api')) return next()
+    return bodyParser.json()(req, res, next)
+  }
+  const parseMockOnlyUrl = (req, res, next) => {
+    if (req.path.startsWith('/api')) return next()
+    return bodyParser.urlencoded({ extended: true })(req, res, next)
+  }
+  app.use(parseMockOnly)
+  app.use(parseMockOnlyUrl)
 
   const mockRoutes = registerRoutes(app)
   var mockRoutesLength = mockRoutes.mockRoutesLength

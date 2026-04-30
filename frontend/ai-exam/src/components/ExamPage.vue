@@ -126,7 +126,7 @@
           </div>
 
           <!-- 查看答案 -->
-          <div v-if="currentQuestionData?.reference_answer" class="reference-answer-section">
+          <div v-if="canShowReferenceAnswer" class="reference-answer-section">
             <div class="reference-answer-toggle" @click="showAnswer = !showAnswer">
               <span class="toggle-icon">{{ showAnswer ? '▼' : '▶' }}</span>
               <span class="toggle-text">查看答案</span>
@@ -196,6 +196,9 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+
+// 「人工智能训练师三级考试」临时采用这种方案，针对尾号05的账号当做模拟考试，此时无法查看答案
+const EXAM_ID_NO_REFERENCE_ANSWER_FOR_PHONE_SUFFIX_05 = 3
 
 
 const currentQuestion = ref(1)
@@ -347,10 +350,33 @@ const renderedNoticeContent = computed(() => {
   return renderMarkdown(currentQuestionData.value.file_description)
 })
 
+// 参考答案专用渲染（和后台预览保持一致，不解析 # 标题，避免 Python 注释被误渲染）
+const renderAnswerMarkdown = (content) => {
+  if (!content) return ''
+
+  let processedContent = content.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+    let fullUrl = url
+    if (!url.startsWith('http')) {
+      if (url.startsWith('/api')) { fullUrl = url }
+      else if (url.startsWith('/')) { fullUrl = `/api${url}` }
+      else { fullUrl = `/api/${url}` }
+    }
+    return `<img src="${fullUrl}" alt="${alt || '图片'}" style="max-width: 100%; height: auto; margin: 10px 0;" />`
+  })
+
+  processedContent = processedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+
+  return processedContent
+    .replace(/^[-*]\s*(.*)$/gim, '<div class="list-item">- $1</div>')
+    .replace(/^([^-*].*)$/gim, '<div class="paragraph">$1</div>')
+    .replace(/\n\s*\n/g, '')
+    .replace(/<div class="paragraph"><\/div>/g, '')
+}
+
 // 渲染后的内容 - 参考答案
 const renderedAnswerContent = computed(() => {
   if (!currentQuestionData.value?.reference_answer) return ''
-  return renderMarkdown(currentQuestionData.value.reference_answer)
+  return renderAnswerMarkdown(currentQuestionData.value.reference_answer)
 })
 
 const showAnswer = ref(false)
@@ -369,6 +395,20 @@ const currentQuestionData = computed(() => {
   }
   
   return found
+})
+
+const canShowReferenceAnswer = computed(() => {
+  if (!currentQuestionData.value?.reference_answer) return false
+  const examId = examData.value?.exam?.id
+  const phone = studentData.value?.phone != null ? String(studentData.value.phone) : ''
+  if (
+    examId === EXAM_ID_NO_REFERENCE_ANSWER_FOR_PHONE_SUFFIX_05 &&
+    phone.length >= 2 &&
+    phone.slice(-2) === '05'
+  ) {
+    return false
+  }
+  return true
 })
 
 // 计算当前题目的required_files

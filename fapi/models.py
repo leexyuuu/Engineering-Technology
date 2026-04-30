@@ -214,6 +214,9 @@ class StudentExam(Base):
     start_time = Column(DateTime)  # 学生开始考试时间
     end_time = Column(DateTime)  # 学生提交时间
     status = Column(String(20), default="not_started")  # not_started, in_progress, submitted
+    ai_total_score = Column(Float)
+    final_total_score = Column(Float)
+    grading_status = Column(String(20), default="not_graded")  # not_graded, ai_grading, ai_graded, reviewed
     
     student = relationship("Student", back_populates="exams")
     exam = relationship("Exam", back_populates="student_exams")
@@ -232,6 +235,41 @@ class StudentAnswer(Base):
     file_answers = Column(Text().with_variant(Text(4294967295), 'mysql'))  # JSON格式存储多个文件答案
     
     student_exam = relationship("StudentExam", back_populates="answers")
+    grading_result = relationship("GradingResult", back_populates="student_answer", uselist=False)
+
+
+class GradingRubric(Base):
+    """评分细则表：存储每道题的标准答案和评分要点"""
+    __tablename__ = "grading_rubrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False, unique=True)
+    rubric_items = Column(Text().with_variant(Text(4294967295), 'mysql'), nullable=False)
+    total_score = Column(Float, nullable=False)
+    grading_type = Column(String(20), nullable=False, default="mixed")
+
+    question = relationship("Question")
+
+
+class GradingResult(Base):
+    """阅卷结果表：存储AI评分和人工复核结果"""
+    __tablename__ = "grading_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_answer_id = Column(Integer, ForeignKey("student_answers.id"), nullable=False)
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)
+    student_exam_id = Column(Integer, ForeignKey("student_exams.id"), nullable=False)
+    ai_score = Column(Float)
+    final_score = Column(Float)
+    item_scores = Column(Text().with_variant(Text(4294967295), 'mysql'))
+    status = Column(String(20), default="pending")
+    reviewed_by = Column(Integer)
+    reviewed_at = Column(DateTime)
+
+    student_answer = relationship("StudentAnswer", back_populates="grading_result")
+    question = relationship("Question")
+    student_exam = relationship("StudentExam")
+
 
 # 创建所有表
 #Base.metadata.create_all(bind=engine)

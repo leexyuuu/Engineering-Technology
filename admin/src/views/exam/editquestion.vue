@@ -278,6 +278,76 @@
         </div>
       </el-form-item>
 
+      <!-- 评分细则（AI阅卷） -->
+      <el-form-item label="评分细则">
+        <div style="margin-bottom: 10px; color: #909399; font-size: 13px;">
+          配置AI阅卷的评分点。每个评分点对应一个得分项，AI将逐项评分。
+        </div>
+        <div style="margin-bottom: 12px;">
+          <el-radio-group v-model="rubricForm.grading_type" size="small">
+            <el-radio-button label="code">代码题</el-radio-button>
+            <el-radio-button label="text">文字论述题</el-radio-button>
+            <el-radio-button label="mixed">混合题</el-radio-button>
+            <el-radio-button label="file">文件题</el-radio-button>
+          </el-radio-group>
+          <span style="margin-left: 16px; font-size: 14px;">
+            总分: <b>{{ rubricTotalScore }}</b>
+          </span>
+          <el-button type="primary" size="mini" style="margin-left: 16px;" @click="addRubricItem">
+            添加评分项
+          </el-button>
+        </div>
+
+        <el-table :data="rubricForm.items" border size="small" style="width: 100%;">
+          <el-table-column label="编号" width="90">
+            <template slot-scope="scope">
+              <el-input v-model="scope.row.item_id" size="mini" placeholder="M1" />
+            </template>
+          </el-table-column>
+          <el-table-column label="评分描述" min-width="250">
+            <template slot-scope="scope">
+              <el-input v-model="scope.row.description" size="mini" placeholder="读取数据集代码正确得1分" />
+            </template>
+          </el-table-column>
+          <el-table-column label="配分" width="70">
+            <template slot-scope="scope">
+              <el-input v-model.number="scope.row.max_score" size="mini" placeholder="1" style="width: 50px;" />
+            </template>
+          </el-table-column>
+          <el-table-column label="类型" width="100">
+            <template slot-scope="scope">
+              <el-select v-model="scope.row.type" size="mini" style="width: 80px;">
+                <el-option label="代码" value="code" />
+                <el-option label="文字" value="text" />
+                <el-option label="文件" value="file" />
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column label="标准答案/关键代码" min-width="200">
+            <template slot-scope="scope">
+              <el-input v-model="scope.row.standard_answer" size="mini" placeholder="标准答案片段" />
+            </template>
+          </el-table-column>
+          <el-table-column label="关键词" min-width="180">
+            <template slot-scope="scope">
+              <el-input v-model="scope.row.keywords_str" size="mini" placeholder="pd.read_csv, patient_data（逗号分隔）" />
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="60" align="center">
+            <template slot-scope="scope">
+              <el-button type="text" size="mini" style="color: #F56C6C;" @click="removeRubricItem(scope.$index)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div style="margin-top: 10px;">
+          <el-button type="success" size="small" :loading="rubricSaving" @click="saveRubric">
+            保存评分细则
+          </el-button>
+          <el-tag v-if="rubricSaved" type="success" size="small" style="margin-left: 10px;">已保存</el-tag>
+        </div>
+      </el-form-item>
+
       <el-form-item label="子问题列表">
         <div
           v-for="(sub, idx) in form.sub_questions"
@@ -405,7 +475,9 @@
 import {
   fetchExamQuestion,
   createExamQuestion,
-  updateExamQuestion
+  updateExamQuestion,
+  fetchRubric,
+  createOrUpdateRubric
 } from '@/api/exam'
 import axios from 'axios'
 function uuid() {
@@ -437,9 +509,15 @@ export default {
       uploadHeaders: {
         Authorization: localStorage.getItem('token') || ''
       },
-      editorMode: 'edit', // 题目描述编辑器模式：edit 或 preview
-      noticeEditorMode: 'edit', // 注意事项编辑器模式：edit 或 preview
-      answerEditorMode: 'edit' // 参考答案编辑器模式：edit 或 preview
+      editorMode: 'edit',
+      noticeEditorMode: 'edit',
+      answerEditorMode: 'edit',
+      rubricForm: {
+        grading_type: 'code',
+        items: []
+      },
+      rubricSaving: false,
+      rubricSaved: false
     }
   },
   computed: {
@@ -460,6 +538,9 @@ export default {
       if (!this.form.reference_answer) return ''
 
       return this.renderMarkdown(this.form.reference_answer)
+    },
+    rubricTotalScore() {
+      return this.rubricForm.items.reduce((sum, item) => sum + (item.max_score || 0), 0)
     }
   },
   created() {
@@ -471,7 +552,6 @@ export default {
         const data = res.data || res
         const parsedData = JSON.parse(data.sub_questions_str)
 
-        // 2. 验证解析结果是否为数组
         if (!Array.isArray(parsedData)) {
           this.form = {
             ...data,
@@ -487,6 +567,7 @@ export default {
           }
         }
       })
+      this.loadRubric()
     }
   },
   methods: {
@@ -669,6 +750,73 @@ export default {
     },
     handleUploadError() {
       this.$message.error('文件上传失败')
+    },
+    loadRubric() {
+      if (!this.question_id) return
+      fetchRubric(this.question_id).then(res => {
+        const data = res.data
+        if (data) {
+          this.rubricForm.grading_type = data.grading_type || 'code'
+          try {
+            const items = JSON.parse(data.rubric_items)
+            this.rubricForm.items = items.map(item => ({
+              ...item,
+              keywords_str: (item.keywords || []).join(', ')
+            }))
+          } catch (e) {
+            this.rubricForm.items = []
+          }
+          this.rubricSaved = true
+        }
+      }).catch(() => {})
+    },
+    addRubricItem() {
+      const nextNum = this.rubricForm.items.length + 1
+      this.rubricForm.items.push({
+        item_id: `M${nextNum}`,
+        description: '',
+        max_score: 1,
+        type: this.rubricForm.grading_type === 'mixed' ? 'text' : this.rubricForm.grading_type,
+        standard_answer: '',
+        keywords_str: ''
+      })
+    },
+    removeRubricItem(idx) {
+      this.rubricForm.items.splice(idx, 1)
+    },
+    saveRubric() {
+      if (!this.question_id) {
+        this.$message.warning('请先保存题目，再配置评分细则')
+        return
+      }
+      if (this.rubricForm.items.length === 0) {
+        this.$message.warning('请至少添加一个评分项')
+        return
+      }
+
+      const rubricItems = this.rubricForm.items.map(item => ({
+        item_id: item.item_id,
+        description: item.description,
+        max_score: item.max_score,
+        type: item.type,
+        standard_answer: item.standard_answer || '',
+        keywords: item.keywords_str ? item.keywords_str.split(',').map(k => k.trim()).filter(k => k) : []
+      }))
+
+      this.rubricSaving = true
+      createOrUpdateRubric({
+        question_id: parseInt(this.question_id),
+        total_score: this.rubricTotalScore,
+        grading_type: this.rubricForm.grading_type,
+        rubric_items: JSON.stringify(rubricItems)
+      }).then(() => {
+        this.$message.success('评分细则保存成功')
+        this.rubricSaved = true
+      }).catch(error => {
+        this.$message.error('保存失败: ' + (error.message || '未知错误'))
+      }).finally(() => {
+        this.rubricSaving = false
+      })
     },
     onSubmit() {
       this.$refs.form.validate((valid) => {

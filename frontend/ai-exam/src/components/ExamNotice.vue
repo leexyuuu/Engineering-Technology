@@ -2,24 +2,21 @@
 <template>
   <div class="exam-notice-page">
     <div class="container">
-
-      <h1 class="title">考试须知</h1>
-
-      <div class="content-text">
-        <p v-for="(value , index ) in content"  :key="index" class="content-item"> 
-          <span class="content-index" >{{ index + 1 }}.</span>
-          <span class="content-value">{{ value }}</span>
-        </p>
+      <div class="scroll-area">
+        <h1 class="title">考试须知</h1>
+        <div class="content-text">
+          <p v-for="(value , index ) in content"  :key="index" class="content-item">
+            <span class="content-index">{{ index + 1 }}.</span>
+            <span class="content-value">{{ value }}</span>
+          </p>
+        </div>
       </div>
-     
-     <div class="button-container" >
-        <button class="button" @click="goToExam" :class="{'countdown-active': time > 0 || isLoading }" :disabled="time > 0 || isLoading"> 
+      <div class="button-container">
+        <button class="button" @click="goToExam" :class="{'countdown-active': time > 0 || isLoading }" :disabled="time > 0 || isLoading">
           {{ time > 0 ? `考试将在 ${time}s 后开始` : (isLoading ? '正在开始考试...' : '进入考试') }}
         </button>
-     </div>
+      </div>
     </div>
-    
-
   </div>
 </template>
 
@@ -131,31 +128,44 @@ body, html {
 
 .exam-notice-page {
   background-color: #fffefe !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
 }
 
 .container {
   background-color: #fffefe;
-  height: 700px;
-  width: 1000px;
-  position: absolute;
-  left: 20%;
-  
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  padding: 40px 24px 0;
+  display: flex;
+  flex-direction: column;
   text-align: center;
-  border-radius: 2%;
+  box-sizing: border-box;
+}
+
+.scroll-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .title {
-  position: absolute;
-  left:30%;
-  right:30%;
   font-weight: bold;
   font-size: 30px;
+  margin: 0 0 24px 0;
 }
 
 .content-text {
-  margin-left: auto;
-  margin-right: auto;
-  margin-top: 80px;
+  text-align: left;
 }
 
 .content-item {
@@ -174,6 +184,13 @@ body, html {
 .content-value{
   flex: 1;
   text-align: justify;
+}
+
+.button-container {
+  flex-shrink: 0;
+  padding: 20px 0 24px;
+  display: flex;
+  justify-content: center;
 }
 
 .button {
