@@ -31,7 +31,7 @@ class AdminModel(Base):
     introduction=Column(String(128))
     password = Column(String(64), comment='密码')
     disabled= Column(BOOLEAN,comment='是否禁用')
-    roles = Column(String,comment='用户角色')
+    roles = Column(String(512), comment='用户角色')
     class Config:
         from_attributes = True
 

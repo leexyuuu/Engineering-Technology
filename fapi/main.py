@@ -4,9 +4,11 @@ from database import SessionLocal, engine, Base
 import admin
 import routers.content,routers.cell,routers.city,routers.area,routers.role,routers.user,routers.Message,routers.Comment,routers.Reply,routers.exam,routers.student
 import routers.grading
-from base import app,get_db
+from base import app, get_db
+
 # 创建所有表
 Base.metadata.create_all(bind=engine)
+
 
 def run_migrations():
     inspector = inspect(engine)
@@ -28,13 +30,10 @@ def run_migrations():
             if 'grading_status' not in columns:
                 conn.execute(text("ALTER TABLE student_exams ADD COLUMN grading_status VARCHAR(20) DEFAULT 'not_graded'"))
 
+
 run_migrations()
 
 
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
- 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: str = None):
-    return test.read_item(item_id,q)

@@ -12,46 +12,44 @@ const service = axios.create({
   timeout: 30000 // request timeout
 })
 
-service.httpPost = function httpPost(url,data){
-
-  return new Promise((resolve,reject)=>{  
-   // console.log('httpPost'+qs.stringify(data)) // for debug
-    service.post(url,data).then(response=>{
-          resolve(response.data)
-      })
-      .catch(err=>{
-          reject(err)
-      })
-  })}
-
-  service.jsonPost = function(url, data) {
-    return service({
-      method: 'post',
-      url,
-      data, // JSON 格式
-      headers: {
-        'Content-Type': 'application/json' // 明确指定
-      }
+service.httpPost = function httpPost(url, data) {
+  return new Promise((resolve, reject) => {
+    // console.log('httpPost'+qs.stringify(data)) // for debug
+    service.post(url, data).then(response => {
+      resolve(response.data)
     })
-  }
-  
+      .catch(err => {
+        reject(err)
+      })
+  })
+}
+
+service.jsonPost = function(url, data) {
+  return service({
+    method: 'post',
+    url,
+    data, // JSON 格式
+    headers: {
+      'Content-Type': 'application/json' // 明确指定
+    }
+  })
+}
 
 // request interceptor
 service.interceptors.request.use(
   config => {
     if (config.method === 'options') {
-      config.headers['Access-Control-Allow-Origin'] = '*';
-      config.headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS';
-      config.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+      config.headers['Access-Control-Allow-Origin'] = '*'
+      config.headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS'
+      config.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     }
-    
-    
+
     // do something before request is sent
     if (store.getters.token) {
       // let each request carry token
       // ['X-Token'] is a custom headers key
       // please modify it according to the actual situation
-      config.headers['Authorization'] = "Bearer " + getToken()
+      config.headers['Authorization'] = 'Bearer ' + getToken()
     }
 
     return config
@@ -76,13 +74,12 @@ service.interceptors.response.use(
    * You can also judge the status by HTTP Status Code
    */
   response => {
-
     const res = response.data
 
     // if the custom code is not 20000, it is judged as an error.
     if (res.code !== 20000) {
       Message({
-        message: res.message ||res.detail || 'Error',
+        message: res.message || res.detail || 'Error',
         type: 'error',
         duration: 5 * 1000
       })

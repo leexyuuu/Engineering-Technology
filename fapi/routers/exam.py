@@ -30,15 +30,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 
-@app.middleware("http")
-async def add_cors_headers(request: Request, call_next):
-    response = await call_next(request)
-    if request.method == "OPTIONS":
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-    return response
-
 class ExamCreate(BaseModel):
     name: str
     description: Optional[str] = None

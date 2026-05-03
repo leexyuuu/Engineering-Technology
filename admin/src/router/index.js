@@ -73,8 +73,8 @@ export const constantRoutes = [
   {
     path: '/',
     component: Layout,
-    redirect: '/exam/examlist',
-    
+    redirect: '/exam/examlist'
+
   },
   {
     path: '/profile',
@@ -97,7 +97,6 @@ export const constantRoutes = [
  * the routes that need to be dynamically loaded based on user roles
  */
 export const asyncRoutes = [
-
 
   {
     path: '/exam',
