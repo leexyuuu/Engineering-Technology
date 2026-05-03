@@ -95,12 +95,7 @@
     "management-system"
   ],
   "license": "MIT",
-  "lint-staged": {
-    "src/**/*.{js,vue}": [
-      "eslint --fix",
-      "git add"
-    ]
-  },
+  "lint-staged": {},
   "husky": {
     "hooks": {
       "pre-commit": "lint-staged"
