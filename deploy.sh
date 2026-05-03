@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # Mock-Exam 考试系统 - 阿里云宝塔服务器完整部署脚本
-# 包含：学生前端 / 管理后台 / FastAPI 后端
+# 包含：学生前端 / 管理后台 / FastAPI 后端 / MySQL 数据库
 # ============================================================
 
 set -e
@@ -13,6 +13,14 @@ ADMIN_DEPLOY_DIR="/www/wwwroot/mock-exam/admin"
 GIT_BRANCH="master"
 PYTHON_VENV="${PROJECT_DIR}/fapi/venv"
 LOG_DIR="${PROJECT_DIR}/logs"
+
+# MySQL 配置
+DB_NAME="mock_exam"
+DB_USER="mockexam"
+DB_PASS="your_password_here"   # ← 部署前改成你的实际密码
+DB_HOST="localhost"
+DB_PORT="3306"
+DATABASE_URL="mysql+pymysql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}?charset=utf8mb4"
 
 # ---- 颜色输出 ----
 RED='\033[0;31m'
@@ -30,6 +38,46 @@ pull_code() {
     cd "$PROJECT_DIR"
     git pull origin "$GIT_BRANCH"
     log_info "代码更新完成"
+}
+
+# ---- 初始化 MySQL 数据库 ----
+setup_mysql() {
+    log_info "========== 检查 MySQL 数据库 =========="
+
+    # 检查 MySQL 是否运行
+    if ! command -v mysql &> /dev/null; then
+        log_error "MySQL 未安装，请先安装 MySQL"
+        log_info "Ubuntu/Debian: sudo apt install mysql-server"
+        log_info "CentOS: sudo yum install mysql-server"
+        exit 1
+    fi
+
+    if ! systemctl is-active --quiet mysql 2>/dev/null && ! systemctl is-active --quiet mysqld 2>/dev/null; then
+        log_warn "MySQL 服务未运行，尝试启动..."
+        sudo systemctl start mysql 2>/dev/null || sudo systemctl start mysqld 2>/dev/null
+    fi
+
+    # 检查数据库是否存在
+    if mysql -u root -e "USE ${DB_NAME}" 2>/dev/null; then
+        log_info "数据库 ${DB_NAME} 已存在"
+    else
+        log_info "创建数据库和用户..."
+        mysql -u root <<EOF
+CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '${DB_USER}'@'${DB_HOST}' IDENTIFIED BY '${DB_PASS}';
+GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'${DB_HOST}';
+FLUSH PRIVILEGES;
+EOF
+        log_info "数据库创建完成"
+    fi
+
+    # 验证连接
+    if mysql -u "${DB_USER}" -p"${DB_PASS}" -e "USE ${DB_NAME}" 2>/dev/null; then
+        log_info "数据库连接验证成功"
+    else
+        log_error "数据库连接失败，请检查用户名和密码"
+        exit 1
+    fi
 }
 
 # ---- 构建学生前端 ----
@@ -88,16 +136,21 @@ deploy_backend() {
     pip install -r requirements.txt -q
     deactivate
 
+    # 创建上传目录
+    mkdir -p "${PROJECT_DIR}/fapi/uploads"
+
     # 创建日志目录
     mkdir -p "$LOG_DIR"
 
-    # 加载环境变量（LLM_API_KEY等）
+    # 加载系统环境变量（如 LLM_API_KEY 等，可选配置在 /etc/environment）
     [ -f /etc/environment ] && source /etc/environment
 
-    # 重启后端服务
+    # 重启后端服务（本次 shell 注入 DATABASE_URL，pm2 --update-env 会带入进程）
     log_info "重启后端服务..."
+    export DATABASE_URL="${DATABASE_URL}"
+
     if pm2 describe mock-exam-api > /dev/null 2>&1; then
-        pm2 restart mock-exam-api
+        pm2 restart mock-exam-api --update-env
     else
         pm2 start ecosystem.config.js
     fi
@@ -110,6 +163,17 @@ deploy_backend() {
 # ---- 部署状态检查 ----
 check_status() {
     log_info "========== 部署状态检查 =========="
+
+    echo ""
+    log_info "MySQL 状态:"
+    if systemctl is-active --quiet mysql 2>/dev/null || systemctl is-active --quiet mysqld 2>/dev/null; then
+        log_info "MySQL 运行中"
+        # 显示数据库表信息
+        TABLE_COUNT=$(mysql -u "${DB_USER}" -p"${DB_PASS}" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME}'" 2>/dev/null || echo "0")
+        log_info "数据库 ${DB_NAME} 中有 ${TABLE_COUNT} 张表"
+    else
+        log_warn "MySQL 未运行"
+    fi
 
     echo ""
     log_info "PM2 服务状态:"
@@ -130,8 +194,8 @@ check_status() {
 
     echo ""
     log_info "部署完成！"
-    echo "  学生端: http://你的域名/"
-    echo "  管理端: http://你的域名/admin/"
+    echo "  学生端:  http://你的域名/"
+    echo "  管理端:  http://你的域名/admin/"
     echo "  后端API: http://127.0.0.1:8000/"
 }
 
@@ -169,11 +233,11 @@ server {
         client_max_body_size 100m;
     }
 
-    # 上传文件访问
+    # 上传文件 - Nginx 直接返回静态文件，不经过 Python
     location /uploads/ {
-        proxy_pass http://127.0.0.1:8000/uploads/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+        alias /www/wwwroot/mock-exam/fapi/uploads/;
+        expires 1d;
+        add_header Cache-Control "public, immutable";
     }
 
     access_log /www/wwwlogs/mock-exam.log;
@@ -192,6 +256,7 @@ main() {
     case "${1:-all}" in
         all)
             pull_code
+            setup_mysql
             build_student_frontend
             build_admin
             deploy_backend
@@ -209,6 +274,7 @@ main() {
             ;;
         backend)
             pull_code
+            setup_mysql
             deploy_backend
             log_info "后端部署完成"
             ;;
@@ -218,6 +284,10 @@ main() {
             build_admin
             log_info "前端(学生+管理)部署完成"
             ;;
+        mysql)
+            setup_mysql
+            log_info "MySQL 初始化完成"
+            ;;
         nginx-config)
             generate_nginx_config
             ;;
@@ -225,13 +295,14 @@ main() {
             check_status
             ;;
         *)
-            echo "用法: $0 {all|student|admin|backend|frontend|nginx-config|status}"
+            echo "用法: $0 {all|student|admin|backend|frontend|mysql|nginx-config|status}"
             echo ""
             echo "  all          - 完整部署（默认）"
             echo "  student      - 只部署学生前端"
             echo "  admin        - 只部署管理后台"
-            echo "  backend      - 只部署后端"
+            echo "  backend      - 只部署后端（含MySQL检查）"
             echo "  frontend     - 部署学生前端 + 管理后台"
+            echo "  mysql        - 只初始化 MySQL 数据库"
             echo "  nginx-config - 输出 Nginx 配置示例"
             echo "  status       - 查看部署状态"
             exit 1

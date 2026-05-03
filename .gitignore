@@ -172,6 +172,8 @@ coverage/
 *.db
 *.sqlite
 *.sqlite3
+# fapi 本地 SQLite（开发用；生产用 MySQL，勿提交）
+fapi/test.db
 
 # Uploads
 uploads/ 
