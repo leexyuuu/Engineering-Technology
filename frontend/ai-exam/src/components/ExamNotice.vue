@@ -161,7 +161,11 @@ body, html {
 .title {
   font-weight: bold;
   font-size: 30px;
-  margin: 0 0 24px 0;
+  line-height: 36px;
+  letter-spacing: 0px;
+  text-align:center;
+  vertical-align: middle;
+  margin-bottom:30px;
 }
 
 .content-text {
@@ -169,11 +173,12 @@ body, html {
 }
 
 .content-item {
-   margin-bottom: 35px;
+   margin-bottom: 16px;
    padding-left: 5%;
    padding-right: 5%;
-    text-align: justify;
+   text-align: justify;
 }
+
 
 .content-index {
   font-weight: bold;
@@ -194,17 +199,18 @@ body, html {
 }
 
 .button {
-  background-color: rgb(80, 157, 234);
+  background-color: #1D4ED8;
   border: none;
-  border-radius: 10px;
-  height: 50px;
-  width:300px;
-  font-size: large;
+  border-radius: 12px;
+  height: 56px;
+  width:224px;
+  font-size: 16px;
+  style:medium;
   color: white;
 }
 
 .countdown-active {
-  color: grey !important;
+  color: white !important;
   opacity: 0.7;
 }
 
