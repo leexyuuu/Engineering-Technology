@@ -2,9 +2,16 @@
   <div class="login-container">
     <!-- 左侧蓝色背景区域 -->
     <div class="left-section">
-      <div class="logo-section">
-        <h1 class="university-name">人工智能训练师等级考试</h1>
-      </div>
+    <div class="logo-section">
+      <h5>PROFESSIONAL</h5>
+      <h5>CERTIFICATION</h5>
+      <h3>人工智能训练师等级考试</h3>
+      <h1 class="university-name">人工智能训练师等级考试</h1>
+      <h4>一个安全、专业且极简的平台，旨在为人工智能领域专业人才提供高效的认证评估平台</h4>
+      <h5>国家级标准认证</h5>
+      <h5>智能化技能评估</h5>
+      <h5>自动化监考系统</h5>
+    </div>
     </div>
 
     <!-- 右侧白色登录表单 -->
@@ -168,11 +175,10 @@ const handleLogin = async () => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   overflow: hidden;
-  background: red; /* 调试背景色 */
 }
 
 .left-section {
-  background-image: url('@/assets/shanghai-skyline.jpg');
+  background:#5c4033;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -184,17 +190,6 @@ const handleLogin = async () => {
   padding: 0;
 }
 
-/* 添加蓝色蒙层 */
-.left-section::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(30, 60, 114, 0.6); /* 浅浅的蓝色蒙层，透明度0.6 */
-  z-index: 1;
-}
 
 .left-section::after {
   content: '';
@@ -219,7 +214,6 @@ const handleLogin = async () => {
 .logo-section {
   text-align: center;
   color: white;
-  z-index: 2; /* 确保在蓝色蒙层之上 */
   position: relative;
 }
 
