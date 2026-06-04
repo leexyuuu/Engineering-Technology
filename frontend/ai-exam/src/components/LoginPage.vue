@@ -3,16 +3,31 @@
     <!-- 左侧蓝色背景区域 -->
     <div class="left-section">
     <div class="logo-section">
-      <h5>PROFESSIONAL</h5>
-      <h5>CERTIFICATION</h5>
-      <h3>人工智能训练师等级考试</h3>
+      <div class="logo-area">
+        <img class="logo-icon" src="./icons/logo.png">
+        <div class="logo-text">
+          <span>AI Trainer</span>
+        </div>
+      </div>
+
       <h1 class="university-name">人工智能训练师等级考试</h1>
-      <h4>一个安全、专业且极简的平台，旨在为人工智能领域专业人才提供高效的认证评估平台</h4>
-      <h5>国家级标准认证</h5>
-      <h5>智能化技能评估</h5>
-      <h5>自动化监考系统</h5>
+      <p class="platform-desc">一个安全、专业且极简的平台，旨在为人工智能领域专业人才提供高效的认证评估平台</p>
+      <div class="keywords">
+        <div>
+          <img src="./icons/list1.png" style="width: 16px; height: 20px;">
+          <span class="national-certification">国家级标准认证</span>
+        </div>
+        <div class="ai-review-div">
+          <img src="./icons/list2.png" style="width: 16px; height: 20px;">
+          <span class="ai-review">智能化技能评估</span>
+        </div>
+        <div class="personal-learn-div">
+          <img src="./icons/list3.png" style="width: 16px; height: 20px;">
+          <span class="personal-learn">个性化学习系统</span>
+        </div>
+      </div>
     </div>
-    </div>
+  </div>
 
     <!-- 右侧白色登录表单 -->
     <div class="right-section">
@@ -178,7 +193,7 @@ const handleLogin = async () => {
 }
 
 .left-section {
-  background:#5c4033;
+  background: linear-gradient(#795548, #3e2723);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -212,8 +227,14 @@ const handleLogin = async () => {
 }
 
 .logo-section {
-  text-align: center;
-  color: white;
+  width: 512px;
+  height: 465.75px;
+  border-radius: 32px;
+  padding: 48px;
+  gap: 24px;
+  background: #ffffff33;
+  text-align: left;
+  color:white;
   position: relative;
 }
 
@@ -232,13 +253,48 @@ const handleLogin = async () => {
   color: white;
   font-weight: bold;
   font-size: 18px;
+  margin-left: 16px;
+  font-weight: bold;
+  justify-content: center;
 }
 
 .university-name {
   font-size: 28px;
-  font-weight: bold;
-  margin: 0 0 10px 0;
+  margin: 24px 0 10px 0;
   color: white;
+}
+
+.platform-desc {
+  font-size: 18px;
+  color: #FFFFFFCC;
+  margin: 24px 0 24px 0;
+}
+
+.national-certification {
+  font-size: 16px;
+  color: #FFFFFFE5;
+  margin: 0 0 0 16px;
+}
+
+.ai-review {
+  font-size: 16px;
+  color: #FFFFFFE5;
+  margin: 0 0 0 16px;
+}
+
+.ai-review-div {
+  margin: 20px 0 0 0;
+}
+
+
+.personal-learn-div {
+  margin: 20px 0 0 0;
+}
+
+.personal-learn {
+  font-size: 16px;
+  color: #FFFFFFE5;
+  margin: 0 0 0 16px;
 }
 
 .exam-title {
@@ -282,6 +338,21 @@ const handleLogin = async () => {
   color: #333;
 }
 
+.logo-area {
+  display: flex;
+}
+
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.logo-icon {
+  width: 54px;
+  height: 54px;
+}
 .form-input {
   width: 100%;
   padding: 14px;
@@ -320,7 +391,7 @@ const handleLogin = async () => {
 .login-button {
   width: 100%;
   padding: 14px;
-  background: #FF3355;
+  background: #3B82F6;
   color: white;
   border: none;
   border-radius: 8px;
@@ -379,6 +450,7 @@ const handleLogin = async () => {
   .exam-title {
     font-size: 18px;
   }
+
 }
 
 /* 大屏幕优化 */
