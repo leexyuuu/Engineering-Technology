@@ -1,0 +1,16 @@
+# 依赖
+node_modules/
+
+# 运行时数据（数据库文件、上传的附件）
+data/
+
+# 日志
+*.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 编辑器
+.vscode/
+.idea/

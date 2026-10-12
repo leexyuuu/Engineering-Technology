@@ -1,0 +1,16 @@
+{
+  "name": "expense-reimbursement-system",
+  "version": "1.0.0",
+  "description": "企业报销管理系统（报销提交 / 审批流转 / 财务管理 / 数据统计）",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "exceljs": "^4.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}
