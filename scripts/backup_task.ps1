@@ -12,8 +12,14 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $DataDir = Join-Path $ProjectRoot "data"
 $BackupRoot = Join-Path $DataDir "backups"
+# 运行留痕日志（供计划任务执行后查证：是否启动 / 是否完成）
+# 注：用 .NET 追加（无 BOM），避免 PS5 Add-Content -Encoding UTF8 每次追加 BOM 字符
+$RunLog = Join-Path $BackupRoot "task_run.log"
+$stamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+[IO.File]::AppendAllText($RunLog, "$stamp 任务启动`r`n", [Text.UTF8Encoding]::new($false))
 
 if (-not (Test-Path (Join-Path $DataDir "app.db"))) {
+    [IO.File]::AppendAllText($RunLog, "$stamp 跳过：未找到数据库`r`n", [Text.UTF8Encoding]::new($false))
     Write-Output "[backup] 未找到数据库，跳过本次备份"
     exit 1
 }
@@ -30,6 +36,7 @@ foreach ($sub in @("faiss", "docs", "uploads")) {
 }
 
 $count = (Get-ChildItem $dest -Recurse -File).Count
+[IO.File]::AppendAllText($RunLog, "$stamp 完成 → $dest（$count 个文件）`r`n", [Text.UTF8Encoding]::new($false))
 Write-Output "[backup] 完成 → $dest（$count 个文件）"
 
 # 保留最近 $Keep 份 daily-*，更早的自动清理
