@@ -173,8 +173,11 @@ def main() -> int:
                            "/api/admin/audit/messages?keyword=%E8%A1%A5%E9%80%80%E9%80%89&page=1&page_size=50",
                            headers=ah)
     kw_items = body.get("items", [])
+    # 注：content 为 120 字预览，关键词可能位于截断点之后（SQL 对完整内容筛选，
+    # 见上线演练报告发现项），故长度达预览上限的条目视为"可能被截断"跳过断言
     check("仅匹配内容", status == 200 and body.get("total", 0) >= 1
-          and all("补退选" in m["content"] for m in kw_items),
+          and all("补退选" in m["content"] or len(m["content"]) >= 120
+                  for m in kw_items),
           f"total={body.get('total')}")
 
     # ── T12 标记疑似违规 ──

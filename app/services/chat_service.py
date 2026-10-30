@@ -118,11 +118,16 @@ class ChatService:
             yield event
 
         # 6) 引用事件 + 落库助手消息（引用来源随消息持久化，供审计）
-        yield _sse("citations", result_box.get("citations", []))
+        #    【上线演练发现3修复】检索零命中（回答"制度中未找到"）时不再输出
+        #    候选引用来源——回答已明确未采纳检索内容，列出候选来源会误导用户
         answer = result_box.get("answer", "")
+        citations = result_box.get("citations") or []
+        if "制度中未找到" in answer:
+            citations = []
+        yield _sse("citations", citations)
         if answer:
             msg_id = await self._save_message(conv.id, "assistant", answer,
-                                              result_box.get("citations") or None)
+                                              citations or None)
         else:
             msg_id = 0   # error 事件已发出，不再落库助手消息
 

@@ -178,8 +178,12 @@ async def _mock_llm(messages: list[dict[str, str]]) -> AsyncIterator[str]:
 #   代他人办理    → 直接拒绝（阶段5 新增：代理意图检测）
 
 # 意图关键词表（按优先级排列；mock 专用，真实供应商由模型自主决策）
+# 【上线演练发现5修复】补充"上课"等常见问法变体：此前"什么时候上课"类问法
+# 未命中课表意图而走 RAG 直答；现命中后若课程不存在，工具会明确返回
+# "未找到课程「X」"，不再误引不相关条文（有目标课程才触发工具调用，安全）
 _KW_SCHEDULE = ("周几", "星期几", "几点", "课表", "上课时间", "哪个教室",
-                "在哪里上", "在哪个教室", "第几节", "几节课", "什么时间上课")
+                "在哪里上", "在哪个教室", "第几节", "几节课", "什么时间上课",
+                "上课", "什么时候上", "啥时候")
 _KW_REQUIREMENTS = ("先修", "学分是", "多少学分", "学时", "容量", "课程要求",
                     "必修还是选修", "选修还是必修", "什么要求")
 _KW_ELIGIBILITY = ("能选", "可以选", "能报", "可以报", "有资格", "资格",
@@ -261,6 +265,71 @@ def _norm_course_name(keyword: str) -> str | None:
     return None
 
 
+def _last_call_keyword(messages: list[dict[str, Any]], tool: str) -> str | None:
+    """取最近一次指定工具调用的 course_name_or_code 参数。
+
+    【上线演练发现5修复】判重依据从"结果结构"改为"调用参数"：
+    课程不存在时工具返回 {found, message}（无 schedule/course_type 等判别键），
+    按结果判重会永远视为"未查过"而反复重查耗尽轮次。
+
+    消息格式兼容：agent_loop 回填的 assistant 消息为 OpenAI 原生格式
+    （tool_calls[].function.name + arguments 为 JSON 字符串）。
+    """
+    for m in reversed(messages):
+        if m.get("role") != "assistant" or not m.get("tool_calls"):
+            continue
+        for tc in m["tool_calls"]:
+            fn = tc.get("function") or {}
+            name = fn.get("name") or tc.get("name")
+            if name != tool:
+                continue
+            raw_args = fn.get("arguments", tc.get("arguments"))
+            if isinstance(raw_args, str):
+                try:
+                    raw_args = json.loads(raw_args)
+                except json.JSONDecodeError:
+                    raw_args = {}
+            return str((raw_args or {}).get("course_name_or_code", ""))
+    return None
+
+
+def _already_queried(messages: list[dict[str, Any]], tool: str, target: str) -> bool:
+    """目标课程是否已用该工具查过：原文相等（覆盖不存在的课程）或归一化相等
+    （同一门课的不同写法，如代码 CS101 与课程名）。"""
+    last = _last_call_keyword(messages, tool)
+    if last is None:
+        return False
+    if last == target:
+        return True
+    norm = _norm_course_name(last)
+    return norm is not None and norm == _norm_course_name(target)
+
+
+def _last_tool_result(messages: list[dict[str, Any]],
+                      tool: str) -> dict[str, Any] | None:
+    """最近一次指定工具调用的执行结果（按 tool_call_id 配对消息，不依赖结果结构）。
+
+    【发现5修复】与 _has_result 的区别：工具"未找到课程"时返回 {found, message}，
+    不含 schedule/course_type 等判别键，按判别键查找会漏掉该结果——
+    本函数按调用配对，任何形态的结果都能取到。
+    """
+    for m in reversed(messages):
+        if m.get("role") != "assistant" or not m.get("tool_calls"):
+            continue
+        for tc in m["tool_calls"]:
+            fn = tc.get("function") or {}
+            if (fn.get("name") or tc.get("name")) != tool:
+                continue
+            call_id = tc.get("id")
+            for t in messages:
+                if t.get("role") == "tool" and t.get("tool_call_id") == call_id:
+                    try:
+                        return json.loads(t["content"])
+                    except (json.JSONDecodeError, TypeError):
+                        return None
+    return None
+
+
 def _mock_final_answer(messages: list[dict[str, Any]],
                        question: str, intent: str = "") -> str | None:
     """根据已回填的工具结果拼装最终回答（确定性输出，便于离线比对）。
@@ -289,23 +358,29 @@ def _mock_final_answer(messages: list[dict[str, Any]],
                 lines.append(f"· {c['item']}：{c['detail']}（{c['rule']}）")
         lines.append(v.get("conclusion", "") + "。")
         return "\n".join(lines)
+    # 【发现5修复】课程未找到/歧义（无 course_code）：直接输出工具结论，
+    # 避免落入兜底 RAG 误引不相关条文
+    if v is not None and v.get("eligible") is False and not v.get("course_code"):
+        return v.get("conclusion") or "未找到该课程，请核对课程名称或代码。"
 
-    # 2) 课表回答
-    s = _has_result(results, "schedule")
-    if s is not None and s.get("found"):
-        parts = [f"《{s['course_name']}》（{s['course_code']}）{s['semester']} 学期排课："]
-        for slot in s["schedule"]:
-            parts.append(f"· {slot['weekday']} {slot['period']}，{slot['room']}，"
-                         f"{slot['teacher']}（{slot['weeks']}）")
-        parts.append(f"课表版本：{s['version']}，数据更新于 {s['data_updated_at']}。")
-        parts.append(s.get("stale_hint", ""))
-        return "\n".join(parts)
-    if s is not None and not s.get("found", True):
+    # 2) 课表回答（【发现5修复】按调用配对取结果：未找到课程时同样能取到）
+    s = _last_tool_result(messages, "query_course_schedule")
+    if s is not None:
+        if s.get("found") and s.get("schedule"):
+            parts = [f"《{s['course_name']}》（{s['course_code']}）{s['semester']} 学期排课："]
+            for slot in s["schedule"]:
+                parts.append(f"· {slot['weekday']} {slot['period']}，{slot['room']}，"
+                             f"{slot['teacher']}（{slot['weeks']}）")
+            parts.append(f"课表版本：{s['version']}，数据更新于 {s['data_updated_at']}。")
+            parts.append(s.get("stale_hint", ""))
+            return "\n".join(parts)
         return s.get("message", "未查询到该课程的排课信息。")
 
-    # 3) 课程信息（按意图输出"要求明细"或"选课确认话术"）
-    c = _has_result(results, "course_type")
-    if c is not None and c.get("found"):
+    # 3) 课程信息（按意图输出"要求明细"或"选课确认话术"；含未找到课程）
+    c = _last_tool_result(messages, "check_course_requirements")
+    if c is not None and not c.get("found", True):
+        return c.get("message", "未找到该课程，请核对课程名称或代码。")
+    if c is not None and c.get("course_type"):
         pres = c.get("prerequisites") or []
         pres_text = ("、".join(f"《{p['name']}》（{p['code']}）" for p in pres)
                      if pres else "无")
@@ -359,9 +434,9 @@ def _mock_decide(messages: list[dict[str, Any]]) -> dict[str, Any]:
         if target:
             # 已校验且通过 → 建申请；未校验 → 先校验（调用顺序约束）
             v = _has_result(results, "eligible")
-            if v is None or v.get("course_name") != _norm_course_name(target):
+            if not _already_queried(messages, "validate_eligibility", target):
                 return _call("validate_eligibility", course_name_or_code=target)
-            if v.get("eligible"):
+            if v is not None and v.get("eligible"):
                 return _call("create_selection_application",
                              course_name_or_code=target)
             return _final(_mock_final_answer(messages, question))
@@ -370,8 +445,8 @@ def _mock_decide(messages: list[dict[str, Any]]) -> dict[str, Any]:
     if any(w in question for w in _KW_SCHEDULE):
         target = _extract_target(question, messages)
         if target:
-            s = _has_result(results, "schedule")
-            if s is None or s.get("course_name") != _norm_course_name(target):
+            # 【发现5修复】按调用参数判重（结果判重对不存在的课程失效）
+            if not _already_queried(messages, "query_course_schedule", target):
                 return _call("query_course_schedule", course_name_or_code=target)
             return _final(_mock_final_answer(messages, question))
 
@@ -379,8 +454,7 @@ def _mock_decide(messages: list[dict[str, Any]]) -> dict[str, Any]:
     if any(w in question for w in _KW_REQUIREMENTS):
         target = _extract_target(question, messages)
         if target:
-            c = _has_result(results, "course_type")
-            if c is None or c.get("course_name") != _norm_course_name(target):
+            if not _already_queried(messages, "check_course_requirements", target):
                 return _call("check_course_requirements", course_name_or_code=target)
             return _final(_mock_final_answer(messages, question,
                                              intent="requirements"))
@@ -389,8 +463,7 @@ def _mock_decide(messages: list[dict[str, Any]]) -> dict[str, Any]:
     if any(w in question for w in _KW_ELIGIBILITY):
         target = _extract_target(question, messages)
         if target:
-            v = _has_result(results, "eligible")
-            if v is None or v.get("course_name") != _norm_course_name(target):
+            if not _already_queried(messages, "validate_eligibility", target):
                 return _call("validate_eligibility", course_name_or_code=target)
             return _final(_mock_final_answer(messages, question))
 
@@ -403,8 +476,7 @@ def _mock_decide(messages: list[dict[str, Any]]) -> dict[str, Any]:
                 return _call("search_selection_rules",
                              query="下学期选课规则 先修课要求 时间冲突 学分上限")
             # 课程要求：未查过、或学生已改选另一门课 → 重新查询
-            c = _has_result(results, "course_type")
-            if c is None or c.get("course_name") != _norm_course_name(target):
+            if not _already_queried(messages, "check_course_requirements", target):
                 return _call("check_course_requirements", course_name_or_code=target)
             return _final(_mock_final_answer(messages, question, intent="select"))
 
