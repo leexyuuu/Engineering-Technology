@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}提示词模板{% endblock %}
+{% block nav_prompt %}active{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h2>系统提示词模板</h2>
+  <p class="sub">修改后保存即对全部问答立即生效（存储于数据库，无需重启服务）。</p>
+</div>
+
+<div class="card">
+  <h3>当前生效模板 <span class="badge" id="updatedAt">-</span></h3>
+  <textarea id="prompt" rows="9" class="prompt-area"
+            placeholder="加载中…"></textarea>
+  <div class="btn-row">
+    <button class="btn-primary" id="saveBtn" disabled>保存并立即生效</button>
+    <button class="btn-ghost" id="resetBtn" title="恢复为系统默认模板">恢复默认</button>
+  </div>
+  <p class="hint">⚠️ 提示词决定助手的回答边界：请保留"只根据制度条文回答""不确定时明确说制度中未找到"
+  "回答末尾附引用来源"等关键约束，避免助手编造排课或选课规则。</p>
+</div>
+
+<div class="card">
+  <h3>默认模板参考</h3>
+  <pre class="default-tpl">你是学校教务制度助手，只根据提供的制度条文回答，不确定时明确说'制度中未找到'，回答末尾附引用来源，不得编造排课或选课规则。</pre>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const DEFAULT_TPL = "你是学校教务制度助手，只根据提供的制度条文回答，不确定时明确说'制度中未找到'，回答末尾附引用来源，不得编造排课或选课规则。";
+const ta = document.getElementById('prompt');
+const saveBtn = document.getElementById('saveBtn');
+
+/* ── 加载当前生效模板 ── */
+async function load() {
+  try {
+    const d = await api('/api/admin/prompt');
+    ta.value = d.content;
+    document.getElementById('updatedAt').textContent =
+      d.updated_at ? `更新于 ${d.updated_at}` : '从未更新';
+    saveBtn.disabled = false;
+  } catch (e) {
+    ta.value = '加载失败：' + e.message;
+  }
+}
+
+/* ── 保存：PUT 后立即对问答生效 ── */
+saveBtn.addEventListener('click', async () => {
+  if (ta.value.trim().length < 10) { alert('提示词过短（至少 10 字）'); return; }
+  saveBtn.disabled = true; saveBtn.textContent = '保存中…';
+  try {
+    const j = await api('/api/admin/prompt', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: ta.value }),
+    });
+    alert(j.message);
+    load();
+  } catch (e) {
+    alert('保存失败：' + e.message);
+  } finally {
+    saveBtn.disabled = false; saveBtn.textContent = '保存并立即生效';
+  }
+});
+
+/* ── 恢复默认（仍需点保存才写入）── */
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('确定将编辑区内容恢复为默认模板？（尚未保存，需再点"保存"才生效）')) {
+    ta.value = DEFAULT_TPL;
+  }
+});
+
+load();
+</script>
+{% endblock %}

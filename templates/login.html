@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 · 排课选课智能体系统</title>
+<link rel="stylesheet" href="/static/admin.css">
+</head>
+<body class="login-bg">
+<div class="login-card">
+  <div class="login-head">
+    <span class="logo">教</span>
+    <div>
+      <h1>排课选课与教务协作智能体系统</h1>
+      <p>学生 · 教师 · 教务管理员 统一登录</p>
+    </div>
+  </div>
+  <form id="loginForm">
+    <label>用户名
+      <input id="username" autocomplete="username" placeholder="student1 / teacher1 / admin1" required>
+    </label>
+    <label>密码
+      <input id="password" type="password" autocomplete="current-password" placeholder="演示账号密码：123456" required>
+    </label>
+    <div class="err" id="err"></div>
+    <button type="submit" class="btn-primary" id="btn">登 录</button>
+  </form>
+  <p class="tip">演示账号：student1（学生）/ teacher1（教师）/ admin1（教务管理员），密码均为 123456</p>
+</div>
+
+<script>
+/* 登录：POST /api/auth/login → 存 token（API 用）→ 按角色跳转（Cookie 已由服务端设置） */
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errEl = document.getElementById('err');
+  const btn = document.getElementById('btn');
+  errEl.textContent = '';
+  btn.disabled = true; btn.textContent = '登录中…';
+  try {
+    const resp = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: document.getElementById('username').value.trim(),
+        password: document.getElementById('password').value,
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.message || '登录失败');
+    localStorage.setItem('token', data.token);      // Bearer 凭证（API 调用）
+    location.href = data.role === 'admin' ? '/admin/kb' : '/';
+  } catch (err) {
+    errEl.textContent = '❌ ' + err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = '登 录';
+  }
+});
+</script>
+</body>
+</html>

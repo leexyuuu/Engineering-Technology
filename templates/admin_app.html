@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}选课申请审核{% endblock %}
+{% block nav_app %}active{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h2>选课申请审核</h2>
+  <p class="sub">学生经智能体生成的选课申请（已过资格校验并经学生本人确认）。按制度 2.6/2.7：系统不自动批准，须教务管理员确认；驳回必须填写原因。</p>
+</div>
+
+<!-- ── 状态筛选 ── -->
+<div class="card">
+  <div class="filter-row">
+    <label>状态
+      <select id="fStatus">
+        <option value="">全部</option>
+        <option value="draft">待学生确认（draft）</option>
+        <option value="student_confirmed">待教务审核（student_confirmed）</option>
+        <option value="admin_confirmed">已同意待执行（admin_confirmed）</option>
+        <option value="executed">已执行（executed）</option>
+        <option value="rejected">已驳回/撤销（rejected）</option>
+      </select>
+    </label>
+    <button class="btn-primary" id="fBtn">查 询</button>
+  </div>
+</div>
+
+<!-- ── 申请列表 ── -->
+<div class="card">
+  <h3>申请单 <span class="badge" id="total">-</span></h3>
+  <table class="table">
+    <thead>
+      <tr><th>业务编号</th><th>学生</th><th>课程</th><th>资格校验</th><th>状态</th><th>备注/驳回原因</th><th>操作</th></tr>
+    </thead>
+    <tbody id="rows"><tr><td colspan="7" class="empty">加载中…</td></tr></tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const STATUS_CN = {
+  draft: '待学生确认', student_confirmed: '待教务审核',
+  admin_confirmed: '已同意·待执行', executed: '已执行', rejected: '已驳回/撤销',
+};
+
+/* ── 加载申请列表 ── */
+async function load() {
+  const qs = new URLSearchParams();
+  const s = document.getElementById('fStatus').value;
+  if (s) qs.set('status', s);
+  const tbody = document.getElementById('rows');
+  try {
+    const d = await api('/api/admin/applications?' + qs.toString());
+    document.getElementById('total').textContent = `共 ${d.total} 条`;
+    if (!d.items.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">暂无申请</td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.items.map(m => `
+      <tr>
+        <td class="t">${esc(m.business_no)}<div class="sub2">${esc(m.created_at)}</div></td>
+        <td>${esc(m.student_name)}<div class="sub2">${esc(m.student_no)}</div></td>
+        <td>《${esc(m.course_name)}》<div class="sub2">${esc(m.course_code)} · ${m.credits} 学分 · ${esc(m.semester)}</div></td>
+        <td>${eligibilityCell(m)}</td>
+        <td><span class="flag-${m.status === 'rejected' ? 'on' : 'off'}">${STATUS_CN[m.status] || m.status}</span></td>
+        <td class="c">${esc(m.admin_note || '-')}</td>
+        <td>${actionButtons(m)}</td>
+      </tr>`).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">加载失败：${e.message}</td></tr>`;
+  }
+}
+
+/* 资格校验摘要（含依据条文，审计"事实引用"） */
+function eligibilityCell(m) {
+  const e = m.eligibility;
+  if (!e || typeof e.eligible !== 'boolean') return '-';
+  const icon = e.eligible ? '✅ 通过' : '❌ 不符';
+  const fails = (e.checks || []).filter(c => !c.passed)
+    .map(c => `${esc(c.item)}：${esc(c.detail)}`).join('<br>');
+  return icon + (fails ? `<div class="sub2">${fails}</div>` : '');
+}
+
+/* 按状态机展示可用操作 */
+function actionButtons(m) {
+  if (m.status === 'student_confirmed') {
+    return `<button class="btn-primary" onclick="review('${m.business_no}','approve')">同 意</button> `
+         + `<button class="btn-danger" onclick="review('${m.business_no}','reject')">驳 回</button>`;
+  }
+  if (m.status === 'admin_confirmed') {
+    return `<button class="btn-ghost" onclick="review('${m.business_no}','execute')">标记已执行</button>`;
+  }
+  return '-';
+}
+
+/* ── 审核（同意/驳回/执行）── */
+async function review(no, action) {
+  let note = '';
+  if (action === 'reject') {
+    note = prompt('请填写驳回原因（必填，将记录到审计留痕）：', '');
+    if (note === null) return;
+    if (!note.trim()) { alert('驳回原因不能为空'); return; }
+  } else if (!confirm(`确认对申请单 ${no} 执行【${action === 'approve' ? '同意' : '标记执行'}】？`)) {
+    return;
+  }
+  try {
+    const r = await api(`/api/admin/applications/${no}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, note }),
+    });
+    alert(r.message);
+    load();
+  } catch (e) {
+    alert('操作失败：' + e.message);
+  }
+}
+
+/* HTML 转义（内容来自用户输入，防注入） */
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+document.getElementById('fBtn').addEventListener('click', load);
+load();
+</script>
+{% endblock %}

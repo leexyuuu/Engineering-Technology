@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教务助手 · 学生问答</title>
+<style>
+  /* ── 全局样式：轻量 SaaS 风格，无外部依赖（离线可用）── */
+  :root { --accent:#2563eb; --bg:#f3f6fb; --card:#ffffff; --text:#1f2937; --muted:#6b7280;
+          --ok:#059669; --danger:#dc2626; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+         background:var(--bg); color:var(--text); height:100vh;
+         display:flex; flex-direction:column; }
+  header { background:var(--card); border-bottom:1px solid #e5e7eb;
+           padding:12px 24px; display:flex; align-items:center; gap:10px; }
+  header .logo { width:34px; height:34px; border-radius:8px; background:var(--accent);
+                 color:#fff; display:flex; align-items:center; justify-content:center;
+                 font-weight:bold; font-size:15px; }
+  header h1 { font-size:16px; }
+  header .sub { font-size:12px; color:var(--muted); margin-top:2px; }
+  header .spacer { flex:1; }
+  header .who { font-size:13px; color:var(--muted); }
+  header button { background:none; border:1px solid #e5e7eb; border-radius:8px;
+                  color:var(--muted); padding:6px 12px; font-size:13px; cursor:pointer; }
+  main { flex:1; overflow-y:auto; padding:20px; }
+  .wrap { max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+  .bubble { max-width:80%; padding:11px 14px; border-radius:12px;
+            line-height:1.75; font-size:14.5px; white-space:pre-wrap; word-break:break-word; }
+  .user { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:4px; }
+  .bot  { align-self:flex-start; background:var(--card); border:1px solid #e5e7eb;
+          border-bottom-left-radius:4px; }
+  /* 检索/思考状态条 */
+  .status { align-self:flex-start; font-size:12.5px; color:#374151;
+            background:#eef2ff; border:1px dashed #c7d2fe;
+            padding:6px 14px; border-radius:999px; }
+  .status .dot { display:inline-block; width:8px; height:8px; border-radius:50%;
+                 background:var(--accent); margin-right:6px; animation:pulse 1s infinite; }
+  @keyframes pulse { 50% {opacity:.25;} }
+  /* 工具调用步骤条（阶段4）：Agent 每轮工具的执行轨迹 */
+  .tools { align-self:flex-start; width:100%; background:var(--card);
+           border:1px solid #e5e7eb; border-radius:10px; padding:10px 14px; }
+  .tools .t { font-size:12.5px; color:var(--muted); margin-bottom:6px; }
+  .tools .step { font-size:13px; padding:4px 0; line-height:1.6; }
+  .tools .step .spin { display:inline-block; color:var(--accent);
+                       animation:pulse 1s infinite; }
+  .tools .step.done .lbl { color:var(--ok); }
+  .tools .step .sum { color:var(--muted); font-size:12.5px; }
+  /* 打字机光标 */
+  .cursor { display:inline-block; width:2px; height:15px; background:var(--accent);
+            animation:blink .8s infinite; vertical-align:-2px; margin-left:2px; }
+  @keyframes blink { 50% {opacity:0;} }
+  /* 引用来源卡片 */
+  .cites { align-self:flex-start; width:100%; background:var(--card);
+           border:1px solid #e5e7eb; border-radius:10px; padding:10px 14px; }
+  .cites .t { font-size:12.5px; color:var(--muted); margin-bottom:6px; }
+  .cites .item { font-size:12.5px; padding:5px 0; border-top:1px dashed #eef0f3; line-height:1.6; }
+  .cites .item b { color:var(--accent); margin-right:6px; }
+  .cites .pv { color:var(--muted); }
+  /* 选课申请确认卡片（阶段4 确认门） */
+  .confirm-card { align-self:flex-start; width:100%; background:var(--card);
+                  border:1.5px solid var(--accent); border-radius:12px; padding:14px 16px; }
+  .confirm-card .hd { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .confirm-card .hd .tag { background:#eef2ff; color:var(--accent); font-size:12px;
+                           padding:2px 10px; border-radius:999px; }
+  .confirm-card .hd b { font-size:14px; }
+  .confirm-card .row { font-size:13.5px; padding:3px 0; line-height:1.7; }
+  .confirm-card .row b { display:inline-block; min-width:76px; color:var(--muted);
+                         font-weight:normal; }
+  .confirm-card .chk { font-size:12.5px; padding:2px 0 2px 10px; color:#374151;
+                       border-left:2px solid #e5e7eb; margin:2px 0; }
+  .confirm-card .chk.bad { color:var(--danger); }
+  .confirm-card .refs { font-size:12px; color:var(--muted); margin:6px 0;
+                        border-top:1px dashed #e5e7eb; padding-top:6px; }
+  .confirm-card .ops { display:flex; gap:10px; margin-top:10px; }
+  .confirm-card button { border-radius:8px; padding:8px 18px; font-size:13.5px;
+                         cursor:pointer; border:1px solid transparent; }
+  .confirm-card .ok { background:var(--accent); color:#fff; }
+  .confirm-card .no { background:#fff; color:var(--danger); border-color:#fecaca; }
+  .confirm-card .st { font-size:13px; padding:8px 0 0; color:var(--ok); }
+  footer { background:var(--card); border-top:1px solid #e5e7eb; padding:14px 24px; }
+  .inputrow { max-width:760px; margin:0 auto; display:flex; gap:10px; }
+  #q { flex:1; border:1px solid #d1d5db; border-radius:10px; padding:11px 14px;
+       font-size:14.5px; outline:none; font-family:inherit; }
+  #q:focus { border-color:var(--accent); }
+  #send { background:var(--accent); color:#fff; border:none; border-radius:10px;
+          padding:0 22px; font-size:14.5px; cursor:pointer; }
+  #send:disabled { background:#93b4f5; cursor:not-allowed; }
+  .hint { max-width:760px; margin:6px auto 0; font-size:12px; color:var(--muted); }
+  .toast { position:fixed; top:18px; left:50%; transform:translateX(-50%);
+           background:#fee2e2; color:#b91c1c; border:1px solid #fecaca;
+           padding:9px 18px; border-radius:10px; font-size:13.5px; display:none; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="logo">教</div>
+    <div>
+      <h1>教务智能助手</h1>
+      <div class="sub">制度问答 · 课表查询 · 选课资格校验 · 选课申请（须本人确认 + 教务审核）</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="who" id="who"></span>
+    <button onclick="logout()">退出登录</button>
+  </header>
+
+  <main><div class="wrap" id="chat"></div></main>
+
+  <footer>
+    <div class="inputrow">
+      <input id="q" placeholder="例如：帮我选下学期的《人工智能基础》选修课（回车发送）" maxlength="500">
+      <button id="send">发送</button>
+    </div>
+    <div class="hint">提示：助手只读不代选——选课须你本人确认并经教务管理员审核（制度 2.7）；资格不符时会如实告知原因。</div>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   学生端聊天逻辑（阶段4，原生 JS，无依赖）：
+   - 登录态：启动时 GET /api/auth/me 校验，未登录跳 /login；
+   - POST /api/chat + fetch 流式读取（手动解析 SSE）；
+   - 事件协议（阶段4 扩展）：
+       status → tool(×N，Agent 工具步骤) → [confirm_required 选课确认卡片]
+       → message(×N) → citations → done / error；
+   - 确认门：confirm_required 携带申请单 → 学生点【确认提交】/
+     【撤销】→ POST /api/chat/confirm（draft → student_confirmed / rejected）。
+   ════════════════════════════════════════════════════════════════ */
+const chatEl = document.getElementById('chat');
+const inputEl = document.getElementById('q');
+const sendBtn = document.getElementById('send');
+const toastEl = document.getElementById('toast');
+
+let sessionId = null;   // 会话 id（done 事件返回，续聊时携带）
+let busy = false;       // 生成中禁止重复发送
+let ready = false;      // 登录态校验完成后才允许提问
+
+function authHeaders() {
+  return { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') };
+}
+function logout() {
+  localStorage.removeItem('token');
+  document.cookie = 'token=; Max-Age=0; path=/';
+  location.href = '/login';
+}
+(async () => {
+  try {
+    const r = await fetch('/api/auth/me', { headers: authHeaders() });
+    if (!r.ok) throw new Error();
+    const me = await r.json();
+    document.getElementById('who').textContent = `${me.real_name}（${me.role}）`;
+    ready = true;
+    inputEl.focus();
+  } catch {
+    location.href = '/login';
+  }
+})();
+
+/* ── 基础 UI 工具 ── */
+function scrollBottom() { chatEl.parentElement.scrollTop = chatEl.parentElement.scrollHeight; }
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function addBubble(cls, text) {
+  const div = document.createElement('div');
+  div.className = 'bubble ' + cls;
+  div.textContent = text;
+  chatEl.appendChild(div);
+  scrollBottom();
+  return div;
+}
+
+function addStatus(text) {
+  const div = document.createElement('div');
+  div.className = 'status';
+  div.innerHTML = '<span class="dot"></span><span class="txt"></span>';
+  div.querySelector('.txt').textContent = text;
+  chatEl.appendChild(div);
+  scrollBottom();
+  return div;
+}
+
+/* 工具步骤条容器（一次问答内的多轮工具调用逐行追加） */
+function addToolsPanel() {
+  const div = document.createElement('div');
+  div.className = 'tools';
+  div.innerHTML = '<div class="t">🛠 智能体执行步骤</div>';
+  chatEl.appendChild(div);
+  scrollBottom();
+  return div;
+}
+
+function addToolStep(panel, label) {
+  const row = document.createElement('div');
+  row.className = 'step';
+  row.innerHTML = `<span class="spin">⟳</span> <span class="lbl"></span>`;
+  row.querySelector('.lbl').textContent = `正在${label}…`;
+  panel.appendChild(row);
+  scrollBottom();
+  return row;
+}
+
+function finishToolStep(row, label, ok, summary) {
+  row.classList.add('done');
+  row.innerHTML = `<span>${ok ? '✓' : '✗'}</span> <span class="lbl"></span>`
+                + (summary ? `<div class="sum"></div>` : '');
+  row.querySelector('.lbl').textContent = `${label}完成`;
+  if (summary) row.querySelector('.sum').textContent = summary;
+  scrollBottom();
+}
+
+function addCitations(citations) {
+  if (!citations || !citations.length) return;      // 工具路径可能无制度引用
+  const div = document.createElement('div');
+  div.className = 'cites';
+  let html = '<div class="t">📚 引用来源（教务管理制度条文）</div>';
+  for (const c of citations) {
+    html += `<div class="item"><b>[${c.index}]</b>${esc(c.source)} · ${esc(c.heading)}（片段#${c.chunk_no}）`
+          + `<br><span class="pv">${esc(c.preview)}…</span></div>`;
+  }
+  div.innerHTML = html;
+  chatEl.appendChild(div);
+  scrollBottom();
+}
+
+/* 选课申请确认卡片（确认门 UI） */
+function addConfirmCard(data) {
+  const app = data.application;
+  const div = document.createElement('div');
+  div.className = 'confirm-card';
+  const checks = (app.eligibility && app.eligibility.checks) || [];
+  div.innerHTML = `
+    <div class="hd"><span class="tag">选课申请</span><b>申请单 ${esc(data.business_no)}</b></div>
+    <div class="row"><b>学生</b>${esc(app.student.name)}（${esc(app.student.no)}）</div>
+    <div class="row"><b>课程</b>《${esc(app.course.name)}》（${esc(app.course.code)}）·
+        ${app.course.credits} 学分 · ${esc(app.semester)} 学期</div>
+    <div class="row"><b>资格校验</b>${app.eligibility && app.eligibility.eligible ? '✅ 已通过' : '❌ 未通过'}</div>
+    ${checks.map(c => `<div class="chk ${c.passed ? '' : 'bad'}">${c.passed ? '✓' : '✗'} ${esc(c.item)}：${esc(c.detail)}（${esc(c.rule)}）</div>`).join('')}
+    <div class="refs">依据：${(app.rule_refs || []).map(esc).join('；')}</div>
+    <div class="ops">
+      <button class="ok">确认提交</button>
+      <button class="no">撤销申请</button>
+    </div>
+    <div class="st" style="display:none"></div>`;
+  chatEl.appendChild(div);
+  scrollBottom();
+
+  div.querySelector('.ok').addEventListener('click', () => submitConfirm(div, data, 'confirm'));
+  div.querySelector('.no').addEventListener('click', () => submitConfirm(div, data, 'reject'));
+  return div;
+}
+
+/* 确认/撤销 → POST /api/chat/confirm（状态机：draft → student_confirmed / rejected） */
+async function submitConfirm(cardEl, data, action) {
+  const st = cardEl.querySelector('.st');
+  const btns = cardEl.querySelectorAll('.ops button');
+  btns.forEach(b => b.disabled = true);
+  st.style.display = 'block';
+  st.style.color = 'var(--muted)';
+  st.textContent = action === 'confirm' ? '提交中…' : '撤销中…';
+  try {
+    const r = await fetch('/api/chat/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ session_id: sessionId, business_no: data.business_no, action })
+    });
+    const j = await r.json().catch(() => ({ message: '请求失败' }));
+    if (!r.ok) throw new Error(j.message || '请求失败');
+    st.style.color = 'var(--ok)';
+    st.textContent = '✓ ' + j.message + '（后续由教务管理员审核，结果以教务系统为准）';
+    cardEl.querySelector('.ops').remove();
+  } catch (e) {
+    st.style.color = 'var(--danger)';
+    st.textContent = '✗ ' + e.message;
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+function showToast(msg) {
+  toastEl.textContent = '❌ ' + msg;
+  toastEl.style.display = 'block';
+  setTimeout(() => { toastEl.style.display = 'none'; }, 4000);
+}
+
+/* ── 打字机渲染器：增量文本先进队列，定时器逐字上屏 ── */
+function makeTypewriter(botEl) {
+  let pending = '', timer = null;
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor';
+
+  function tick() {
+    if (!pending) {
+      clearInterval(timer); timer = null;
+      cursor.remove();
+      return;
+    }
+    const n = Math.min(2, pending.length);
+    cursor.before(document.createTextNode(pending.slice(0, n)));
+    pending = pending.slice(n);
+    scrollBottom();
+  }
+  return {
+    feed(text) {
+      pending += text;
+      if (!timer) { botEl.appendChild(cursor); timer = setInterval(tick, 16); }
+    },
+    finish() {
+      if (timer) { clearInterval(timer); timer = null; }
+      if (pending) { botEl.appendChild(document.createTextNode(pending)); pending = ''; }
+      cursor.remove();
+      scrollBottom();
+    }
+  };
+}
+
+/* ── SSE 事件解析 ── */
+function parseEvent(chunk) {
+  let event = 'message', data = '';
+  for (const line of chunk.split('\n')) {
+    if (line.startsWith('event:')) event = line.slice(6).trim();
+    else if (line.startsWith('data:')) data += line.slice(5).trim();
+  }
+  try { return { event, data: JSON.parse(data) }; }
+  catch { return null; }
+}
+
+/* ── 主流程：发送问题并消费 SSE 流 ── */
+async function ask() {
+  const q = inputEl.value.trim();
+  if (!q || busy || !ready) return;
+  busy = true; sendBtn.disabled = true;
+  addBubble('user', q);
+  inputEl.value = '';
+
+  const statusEl = addStatus('正在连接…');
+  let botEl = null, typer = null, toolsPanel = null;
+  const stepRows = {};                    // name → 步骤行（start→done 配对）
+
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ session_id: sessionId, question: q })
+    });
+
+    if (resp.status === 401) { logout(); return; }
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ message: '服务异常（HTTP ' + resp.status + '）' }));
+      throw new Error(err.message || '服务异常');
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const ev = parseEvent(buf.slice(0, idx));
+        buf = buf.slice(idx + 2);
+        if (!ev) continue;
+
+        if (ev.event === 'status') {
+          statusEl.querySelector('.txt').textContent = ev.data.text;
+        } else if (ev.event === 'tool') {              // Agent 工具步骤
+          const d = ev.data;
+          if (d.phase === 'start') {
+            if (!toolsPanel) toolsPanel = addToolsPanel();
+            stepRows[d.name + d.round] = addToolStep(toolsPanel, d.label);
+          } else {
+            const row = stepRows[d.name + d.round];
+            if (row) finishToolStep(row, d.label, d.ok !== false, d.summary);
+          }
+        } else if (ev.event === 'message') {           // 回答增量 → 打字机
+          if (statusEl.isConnected) statusEl.remove();
+          if (!botEl) { botEl = addBubble('bot', ''); typer = makeTypewriter(botEl); }
+          typer.feed(ev.data.delta);
+        } else if (ev.event === 'confirm_required') {  // 确认门：选课申请卡片
+          if (typer) typer.finish();
+          addConfirmCard(ev.data);
+        } else if (ev.event === 'citations') {
+          if (typer) typer.finish();
+          addCitations(ev.data);
+        } else if (ev.event === 'done') {
+          sessionId = ev.data.session_id;
+        } else if (ev.event === 'error') {
+          if (typer) typer.finish();
+          throw new Error(ev.data.message);
+        }
+      }
+    }
+    if (typer) typer.finish();
+  } catch (e) {
+    showToast(e.message);
+  } finally {
+    if (statusEl.isConnected) statusEl.remove();
+    busy = false; sendBtn.disabled = false; inputEl.focus();
+  }
+}
+
+sendBtn.addEventListener('click', ask);
+inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+</script>
+</body>
+</html>

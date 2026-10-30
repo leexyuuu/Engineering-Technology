@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}教务管理{% endblock %} · 知行职业学院</title>
+<link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">教</span>
+      <div>
+        <h1>排课选课与教务协作智能体系统</h1>
+        <span class="sub">知行职业学院 · 教务管理后台</span>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="/admin/kb" class="{% block nav_kb %}{% endblock %}">知识库管理</a>
+      <a href="/admin/prompt" class="{% block nav_prompt %}{% endblock %}">提示词模板</a>
+      <a href="/admin/audit" class="{% block nav_audit %}{% endblock %}">对话审计</a>
+      <a href="/admin/applications" class="{% block nav_app %}{% endblock %}">选课申请</a>
+    </nav>
+    <div class="user">
+      <span>{{ user.real_name }}（{{ user.role }}）</span>
+      <button onclick="logout()">退出登录</button>
+    </div>
+  </header>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    /* ── 通用：带凭证的 API 请求（Cookie 自动携带；失败时弹中文错误） ── */
+    async function api(path, options = {}) {
+      const resp = await fetch(path, { credentials: 'include', ...options });
+      if (resp.status === 401) { location.href = '/login'; throw new Error('未登录'); }
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.message || `请求失败（${resp.status}）`);
+      return data;
+    }
+    function logout() {
+      document.cookie = 'token=; Max-Age=0; path=/';
+      location.href = '/login';
+    }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

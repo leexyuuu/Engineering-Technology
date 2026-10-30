@@ -1,0 +1,22 @@
+# 阶段 3 · 管理后台依赖（Python 3.11+）
+fastapi>=0.115            # Web 框架（异步）
+uvicorn[standard]>=0.30   # ASGI 服务器
+sse-starlette>=2.1        # SSE 流式响应
+sqlalchemy>=2.0           # ORM（async，可切 PostgreSQL）
+aiosqlite>=0.20           # SQLite 异步驱动
+greenlet>=3.0             # SQLAlchemy asyncio 依赖
+pydantic-settings>=2.4    # 配置管理（.env / 环境变量）
+
+# ── 阶段 3 新增 ──
+pyjwt>=2.8                # JWT 签发与校验（HS256）
+python-multipart>=0.0.9   # 表单/文件上传（UploadFile 依赖）
+jinja2>=3.1               # 管理后台服务端渲染模板
+pypdf>=4.0                # PDF 文本抽取（知识库上传 pdf）
+
+# ── RAG 核心模块依赖（阶段1 起）──
+faiss-cpu>=1.8.0          # 向量索引
+rank-bm25>=0.2.2          # BM25 词法检索
+jieba>=0.42.1             # 中文分词
+numpy>=1.24               # 向量计算
+openai>=1.30              # OpenAI 兼容 SDK（LLM / Embedding，供应商可替换）
+python-dotenv>=1.0        # .env 加载

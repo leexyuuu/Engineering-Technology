@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}知识库管理{% endblock %}
+{% block nav_kb %}active{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h2>教务制度知识库</h2>
+  <p class="sub">上传 Markdown / PDF 制度文档 → 自动 500 字切片 → 向量化入库，删除后立即生效于问答检索。</p>
+</div>
+
+<!-- ── 上传卡片 ── -->
+<div class="card">
+  <h3>上传制度文档</h3>
+  <form id="uploadForm">
+    <div class="upload-row">
+      <input type="file" id="file" accept=".md,.pdf" required>
+      <button type="submit" class="btn-primary" id="upBtn">上传并入库</button>
+    </div>
+    <p class="hint">支持 .md（UTF-8）与 .pdf（文字版）；上限 10MB；同名文档需先删除旧版。</p>
+  </form>
+</div>
+
+<!-- ── 文档列表 ── -->
+<div class="card">
+  <h3>文档列表 <span class="badge" id="total">-</span></h3>
+  <table class="table">
+    <thead>
+      <tr><th>文件名</th><th>分类</th><th>版本</th><th>切片数</th><th>上传时间</th><th>操作</th></tr>
+    </thead>
+    <tbody id="rows"><tr><td colspan="6" class="empty">加载中…</td></tr></tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── 文档列表加载与渲染 ── */
+async function load() {
+  const tbody = document.getElementById('rows');
+  try {
+    const d = await api('/api/admin/kb/documents');
+    document.getElementById('total').textContent = d.total + ' 个文档';
+    if (!d.documents.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">知识库为空，请上传制度文档</td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.documents.map(doc => `
+      <tr>
+        <td class="fname">${doc.filename}</td>
+        <td>${doc.doc_type}</td>
+        <td>${doc.version}</td>
+        <td>${doc.chunk_count} 段</td>
+        <td>${doc.created_at}</td>
+        <td><button class="btn-danger" onclick="del(${doc.id}, '${doc.filename}')">删除</button></td>
+      </tr>`).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">加载失败：${e.message}</td></tr>`;
+  }
+}
+
+/* ── 上传：FormData → POST /api/admin/kb/upload（切片+向量化+重建索引）── */
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('file');
+  const btn = document.getElementById('upBtn');
+  if (!input.files.length) return;
+  btn.disabled = true; btn.textContent = '切片并入库中…';
+  try {
+    const fd = new FormData();
+    fd.append('file', input.files[0]);
+    const r = await fetch('/api/admin/kb/upload', { method: 'POST', body: fd });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.message || '上传失败');
+    alert(j.message);
+    e.target.reset();
+    load();
+  } catch (err) {
+    alert('上传失败：' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '上传并入库';
+  }
+});
+
+/* ── 删除：软删除 + 重建索引（二次确认）── */
+async function del(id, name) {
+  if (!confirm(`确认删除《${name}》？\n删除后立即从问答检索中移除。`)) return;
+  try {
+    const j = await api(`/api/admin/kb/documents/${id}`, { method: 'DELETE' });
+    alert(j.message);
+    load();
+  } catch (e) {
+    alert('删除失败：' + e.message);
+  }
+}
+
+load();
+</script>
+{% endblock %}
