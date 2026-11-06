@@ -16,7 +16,8 @@
 - answer_not_contains：回答禁词（越权承诺类）
 - has_citations / has_confirm_card / no_confirm_card：事件级断言
 工具字段：expected_tools（必须出现）、forbidden_tools（不得出现）、
-          exact_tools=true（精确序列匹配，否则按子集校验）。
+          exact_tools=true（期望工具须按序出现，允许中间插入额外只读工具；
+          写操作 create_selection_application 不得出现在期望之外），否则按子集校验。
 
 限流适配：/api/chat 限流 20 次/分钟，脚本内置节流（每 18 次等 61 秒）。
 """
@@ -107,7 +108,7 @@ def chat_sse(token: str, question: str,
         headers={"Content-Type": "application/json",
                  "Authorization": f"Bearer {token}"})
     try:
-        with urllib.request.urlopen(req, timeout=90) as r:
+        with urllib.request.urlopen(req, timeout=180) as r:
             raw = r.read().decode("utf-8")
     except urllib.error.HTTPError as e:
         return {"answer": "", "citations": [], "tools": [], "confirm": None,
@@ -147,6 +148,23 @@ def chat_sse(token: str, question: str,
 
 # ══════════════════ 断言引擎 ══════════════════
 
+# 写操作工具：未出现在期望序列时一律判失败（只读系统的越权写入红线）
+WRITE_TOOLS = {"create_selection_application"}
+
+
+def is_ordered_subset(expected: list[str], actual: list[str]) -> bool:
+    """期望工具是否按序出现在实际轨迹中（允许中间插入其他工具）。
+
+    真实供应商（qwen-plus）常先查课程要求再校验资格、或在同一轮多查一步制度，
+    与 mock 供应商的精确轨迹不同；断言只约束"必需步骤齐全且顺序正确"。
+    """
+    i = 0
+    for name in actual:
+        if i < len(expected) and name == expected[i]:
+            i += 1
+    return i == len(expected)
+
+
 def check_assertions(expect: dict, actual: dict) -> list[str]:
     """对一轮对话执行断言，返回失败原因列表（空 = 通过）。
 
@@ -162,8 +180,11 @@ def check_assertions(expect: dict, actual: dict) -> list[str]:
     # 1) 工具断言
     tools, exp = actual["tools"], expect.get("expected_tools", [])
     if expect.get("exact_tools"):
-        if tools != exp:
-            fails.append(f"工具序列不符：期望 {exp}，实际 {tools}")
+        if not is_ordered_subset(exp, tools):
+            fails.append(f"工具序列不符（缺少或乱序）：期望 {exp}，实际 {tools}")
+        for t in tools:
+            if t in WRITE_TOOLS and t not in exp:
+                fails.append(f"出现未预期的写操作工具：{t}")
     else:
         for t in exp:
             if t not in tools:

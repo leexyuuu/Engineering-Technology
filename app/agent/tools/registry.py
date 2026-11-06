@@ -63,7 +63,9 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "name": "search_selection_rules",
             "description": "检索教务管理制度条文（选课规则/排课规则/学分标准/调课"
                            "规定）。适用：学生询问制度依据时调用，回答必须引用检索"
-                           "到的条文。",
+                           "到的条文。规则类问题（如学分上限、时间冲突如何处理、"
+                           "毕业学分、选课时间）应先检索并直接依据条文作答，不要反问"
+                           "具体课程名称。",
             "parameters": {
                 "type": "object",
                 "properties": {

@@ -30,6 +30,9 @@
   .user { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:4px; }
   .bot  { align-self:flex-start; background:var(--card); border:1px solid #e5e7eb;
           border-bottom-left-radius:4px; }
+  /* 错误气泡：限流/服务异常留痕在对话里（toast 一闪而过，容易以为"没回答"） */
+  .err  { align-self:flex-start; background:#fee2e2; color:#b91c1c;
+          border:1px solid #fecaca; border-bottom-left-radius:4px; }
   /* 检索/思考状态条 */
   .status { align-self:flex-start; font-size:12.5px; color:#374151;
             background:#eef2ff; border:1px dashed #c7d2fe;
@@ -172,6 +175,12 @@ function addBubble(cls, text) {
   chatEl.appendChild(div);
   scrollBottom();
   return div;
+}
+
+/* 错误气泡：把 HTTP/SSE 错误留在对话里并附错误码，避免"只看到提问没有回答" */
+function addErrorBubble(message, code) {
+  const text = '⚠ ' + (message || '请求失败') + (code ? `（错误码 ${code}）` : '');
+  return addBubble('err', text);
 }
 
 function addStatus(text) {
@@ -317,10 +326,14 @@ function makeTypewriter(botEl) {
   };
 }
 
-/* ── SSE 事件解析 ── */
+/* ── SSE 事件解析 ──
+   SSE 规范允许 CRLF / CR / LF 三种行尾；服务端（sse-starlette）默认用 CRLF，
+   因此按 /\r\n|\r|\n/ 切行、按 /\r\n\r\n|\n\n|\r\r/ 找事件边界。 */
+const EVENT_SEP = /\r\n\r\n|\n\n|\r\r/;
+
 function parseEvent(chunk) {
   let event = 'message', data = '';
-  for (const line of chunk.split('\n')) {
+  for (const line of chunk.split(/\r\n|\r|\n/)) {
     if (line.startsWith('event:')) event = line.slice(6).trim();
     else if (line.startsWith('data:')) data += line.slice(5).trim();
   }
@@ -351,7 +364,9 @@ async function ask() {
 
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({ message: '服务异常（HTTP ' + resp.status + '）' }));
-      throw new Error(err.message || '服务异常');
+      const e = new Error(err.message || '服务异常（HTTP ' + resp.status + '）');
+      e.code = err.code || String(resp.status);      // 42901 等统一错误码
+      throw e;
     }
 
     const reader = resp.body.getReader();
@@ -363,10 +378,10 @@ async function ask() {
       if (done) break;
       buf += decoder.decode(value, { stream: true });
 
-      let idx;
-      while ((idx = buf.indexOf('\n\n')) >= 0) {
-        const ev = parseEvent(buf.slice(0, idx));
-        buf = buf.slice(idx + 2);
+      let m;
+      while ((m = EVENT_SEP.exec(buf)) !== null) {
+        const ev = parseEvent(buf.slice(0, m.index));
+        buf = buf.slice(m.index + m[0].length);
         if (!ev) continue;
 
         if (ev.event === 'status') {
@@ -394,13 +409,16 @@ async function ask() {
           sessionId = ev.data.session_id;
         } else if (ev.event === 'error') {
           if (typer) typer.finish();
-          throw new Error(ev.data.message);
+          const e = new Error(ev.data.message);
+          e.code = ev.data.code;
+          throw e;
         }
       }
     }
     if (typer) typer.finish();
   } catch (e) {
-    showToast(e.message);
+    if (statusEl.isConnected) statusEl.remove();
+    addErrorBubble(e.message, e.code);       // 错误留痕在对话里，不再只闪 toast
   } finally {
     if (statusEl.isConnected) statusEl.remove();
     busy = false; sendBtn.disabled = false; inputEl.focus();

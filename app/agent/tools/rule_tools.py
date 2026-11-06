@@ -37,6 +37,6 @@ async def search_selection_rules(ctx, arguments: dict[str, Any]) -> dict[str, An
             "source": meta["source"],          # 来源文件（含版本，审计"资料版本"）
             "heading": meta["heading"],        # 所属章节
             "chunk_no": meta["chunk_no"],      # 片段号（可回查原文）
-            "content": meta["content"][:200],  # 摘要截断，避免提示词过长
+            "content": meta["content"],        # 完整条文片段（切片本身 ≤500 字）
         })
     return {"found": True, "query": query, "rules": rules}

@@ -199,6 +199,13 @@ _PROXY_PATTERN = re.compile(
 _PROXY_REFUSAL = ("抱歉，选课申请须由学生本人发起并确认，我不能代替他人办理"
                   "（制度 2.7）。请让你的同学使用本人账号登录后自行操作。")
 
+# 模糊选课咨询（未给出具体课程）：如"我需要选什么课""该选哪门课"
+# 【上线演练修复】这类问题制度中没有对应条文（制度只规定规则、不提供推荐课程），
+# 旧逻辑会落入 RAG 直答并被词面重叠判定为"未找到"，答不出任何可用信息；
+# 现改为明确引导：请提供课程名/代码，并说明可查的演示课程与可执行操作。
+_VAGUE_SELECT_PATTERN = re.compile(
+    r"(选什么课|选哪门课|选哪个课|该选什么|哪些课.{0,4}选|推荐.{0,4}课|选课建议|什么课好)")
+
 
 def _extract_course(text: str) -> str | None:
     """从文本提取课程关键词：《课程名》优先，其次课程名词表/代码包含匹配。"""
@@ -403,6 +410,21 @@ def _mock_final_answer(messages: list[dict[str, Any]],
     return None
 
 
+def _vague_selection_guide() -> str:
+    """模糊选课咨询的引导话术（含演示课程清单，避免把推荐当成制度结论）。"""
+    from .tools import mock_data as md
+    courses = "、".join(f"{c['name']}（{c['code']}）" for c in md.MOCK_COURSES.values())
+    return ("（mock 供应商·离线演示）制度中未找到与该问题相关的条文——学院制度只规定"
+            "选课规则，不提供推荐课程，系统也不代替学生选课（制度 2.7）。\n"
+            "请告诉我具体课程名称或课程代码，我可以帮你：\n"
+            "· 查询课表时间 / 教室 / 任课教师；\n"
+            "· 查看课程要求（学分 / 学时 / 先修课 / 容量）；\n"
+            "· 校验你的选课资格，并生成需你本人确认的选课申请单。\n"
+            f"当前演示课程：{courses}。\n"
+            "参考：选课在第 18 周进行（制度 2.1）；每学期选课总学分须在 16–28 学分之间"
+            "（制度 2.4）。")
+
+
 def _mock_decide(messages: list[dict[str, Any]]) -> dict[str, Any]:
     """mock 决策器：按意图规则产出确定性的 tool_calls / 最终回答。"""
     # 当前学生问题 = 最后一条 user 消息
@@ -479,6 +501,11 @@ def _mock_decide(messages: list[dict[str, Any]]) -> dict[str, Any]:
             if not _already_queried(messages, "check_course_requirements", target):
                 return _call("check_course_requirements", course_name_or_code=target)
             return _final(_mock_final_answer(messages, question, intent="select"))
+
+    # ── 意图6：模糊选课咨询（未给课程名）→ 引导提供课程名/代码 ──
+    #     放在工具意图之后：已给出具体课程的问题由意图2-5 正常处理
+    if _VAGUE_SELECT_PATTERN.search(question) and not _extract_target(question, messages):
+        return _final(_vague_selection_guide())
 
     # ── 兜底：无工具意图 → 直答（agent_loop 用 RAG 上下文走 stream_llm）──
     return {"content": None, "tool_calls": None, "finish_reason": "stop"}

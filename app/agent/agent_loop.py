@@ -23,11 +23,16 @@ SSE 事件协议（阶段4 扩展，前端 static/index.html 同步支持）：
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, AsyncIterator
 
+from sqlalchemy import select
+
+from ..db import AsyncSessionLocal
+from ..models import AgentDecisionLog
 from ..schemas import ApiError
 from .llm_gateway import complete_llm, sanitize_for_llm, stream_llm
-from .prompt_assembler import build_messages
+from .prompt_assembler import build_messages, with_course_catalog
 from .tools import ToolContext, execute_tool, get_tool_schemas
 from .tools.registry import log_decision
 
@@ -54,6 +59,186 @@ def _split_stream(text: str, size: int = 24) -> list[str]:
     return [text[i:i + size] for i in range(0, len(text), size)] or [""]
 
 
+# 安全拒答/引导话术标记：命中即视为"可接受的无工具直答"，不强制改走 RAG
+_SAFE_ANSWER_MARKERS = ("抱歉", "不能", "无法", "不可", "不便", "不提供", "不受理",
+                        "请提供", "请告诉我", "请咨询", "建议咨询", "未找到", "请稍后",
+                        "不代替", "不修改", "不编造")
+
+
+def _looks_ungrounded(answer: str) -> bool:
+    """无工具直答时判断答案是否属于"未检索就作答"（需强制回退 RAG）。
+
+    安全拒答、超范围说明、引导话术不强制检索（这类回答不需要制度事实支撑）。
+    """
+    return not any(k in answer for k in _SAFE_ANSWER_MARKERS)
+
+
+# ── 安全硬约束（提示词9 评测 V01/V04 暴露的真实供应商问题）──
+# 提示词层已写禁令，但真实模型仍可能跳过审核直接建申请（V01）、
+# 或回显他人姓名（V04）；此处做代码层确定性拦截：命中即标准化拒答，
+# 完全不进入工具循环（不产生任何写入、确认卡片与他人信息）。
+_BYPASS_AUDIT_PATTERN = re.compile(
+    r"(不用|无需|不必|免|跳过|绕过|省去).{0,4}(审核|审批)"
+    r"|直接.{0,4}(加进|加入).{0,4}课表")
+_THIRD_PARTY_PATTERN = re.compile(
+    r"(同学|室友|朋友|别人|他人|同事|学长|学姐).{0,6}(课表|成绩|选课|个人信息|联系方式)")
+# 诱导修改制度参数（学分上限等）：只读系统，须明确拒绝并给出制度规定值（2.4）
+_RULE_TAMPER_PATTERN = re.compile(
+    r"学分.{0,4}上限|上限.{0,4}(学分|调到|改成)|(调|改).{0,4}\d+\s*学分")
+
+# 学生已确认选课的标志（上一轮助手的确认话术）；没有它不得创建申请（M01 评测暴露）
+# 真实供应商措辞多样（"确认是否选课""请确认""请您确认…"），此处覆盖倒序/敬语变体
+_CONFIRM_ASK_PATTERN = re.compile(
+    r"确认要选|是否确认|确认是否|确认选|请确认|请您确认|请你确认|是否要选|回复.{0,2}确认")
+
+# 学生本人的确认语：整句即确认（"确认，顺便…"这类混合请求不算，避免夹带越权意图）
+_CONFIRM_REPLY_PATTERN = re.compile(
+    r"^\s*(确认|确定|好的|可以|同意|没问题|是|是的|行|ok)\s*[！!。，,.]?\s*$", re.I)
+
+# 呈现过选课信息的工具（查课程要求 / 校验资格）：作为状态化确认门的"意向已呈现"证据
+_INTENT_TOOLS = ("check_course_requirements", "validate_eligibility")
+
+_BYPASS_REFUSAL = (
+    "抱歉，选课必须走「提交申请 → 你本人确认 → 教务管理员审核」流程（制度 2.7），"
+    "系统不代替你选课，也不能跳过审核把课程直接放进课表。\n"
+    "如果你需要选这门课，我可以先帮你查课程要求、校验资格，再生成需要你本人确认的"
+    "选课申请单，由教务管理员审核后生效。")
+
+_THIRD_PARTY_REFUSAL = (
+    "抱歉，我只能查询你本人的课表、成绩与选课信息，不能提供他人的个人信息。"
+    "如果你需要查询自己的课表，请告诉我你自己的课程名称或课程代码。")
+
+_RULE_TAMPER_REFUSAL = (
+    "抱歉，每学期选课学分上限由教务制度规定（制度 2.4：每学期选课总学分须在 16–28 "
+    "学分之间，上限 28 学分），系统只读（制度 2.7），我不能修改制度参数。\n"
+    "如确有特殊原因需要超出上限，可按制度 2.6 提交特殊申请，由教务管理员审核确认。")
+
+
+def _safety_refusal(question: str) -> str | None:
+    """命中越权/违规意图时返回标准化拒答话术，否则返回 None。"""
+    if _BYPASS_AUDIT_PATTERN.search(question):
+        return _BYPASS_REFUSAL
+    if _RULE_TAMPER_PATTERN.search(question):
+        return _RULE_TAMPER_REFUSAL
+    if _THIRD_PARTY_PATTERN.search(question):
+        return _THIRD_PARTY_REFUSAL
+    return None
+
+
+def _asked_confirmation(messages: list[dict[str, Any]]) -> bool:
+    """是否已在对话中向学生复述课程信息并请其确认（创建申请的前置条件）。"""
+    return any(m.get("role") == "assistant" and m.get("content")
+               and _CONFIRM_ASK_PATTERN.search(m["content"]) for m in messages)
+
+
+def _prior_turns(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """当前问题之前的历史消息（当前轮之后新追加的工具证据不参与判定）。"""
+    last_user = 0
+    for i, m in enumerate(messages):
+        if m.get("role") == "user":
+            last_user = i
+    return messages[:last_user]
+
+
+def _presented_selection(messages: list[dict[str, Any]]) -> bool:
+    """历史中是否已查过课程要求/资格（即已向学生呈现过选课信息）。"""
+    for m in messages:
+        for c in m.get("tool_calls") or []:
+            if (c.get("function") or {}).get("name") in _INTENT_TOOLS:
+                return True
+    return False
+
+
+def _may_create_application(conv_id: int, messages: list[dict[str, Any]],
+                            question: str) -> bool:
+    """状态化确认门（同步部分）：历史已呈现选课信息 + 学生本轮确认。
+
+    历史消息从库中只带 role/content，跨轮工具证据需用 _has_prior_intent 查库，
+    因此真正调用见 _check_confirm_gate。
+    """
+    prior = _prior_turns(messages)
+    if not _presented_selection(prior):
+        return False
+    return bool(_CONFIRM_REPLY_PATTERN.match(question)) or _asked_confirmation(prior)
+
+
+async def _has_prior_intent(conv_id: int) -> bool:
+    """会话历史中是否已查过课程要求/资格（状态化确认门的"意向已呈现"证据）。
+
+    走 AgentDecisionLog（每次工具执行都会落库），不依赖助手具体措辞。
+    """
+    async with AsyncSessionLocal() as db:
+        row = (await db.execute(
+            select(AgentDecisionLog.id)
+            .where(AgentDecisionLog.conversation_id == conv_id,
+                   AgentDecisionLog.tool_name.in_(_INTENT_TOOLS))
+            .limit(1))).first()
+    return row is not None
+
+
+async def _check_confirm_gate(conv_id: int, messages: list[dict[str, Any]],
+                              question: str) -> bool:
+    """确认门判定：已呈现选课信息（会话历史或库中决策日志）且学生本轮确认。
+
+    仅靠正则匹配助手话术会漏判（M01/M05 评测暴露），故以会话状态为主判据。
+    """
+    if _may_create_application(conv_id, messages, question):
+        return True
+    return await _has_prior_intent(conv_id) and (
+        bool(_CONFIRM_REPLY_PATTERN.match(question)) or _asked_confirmation(messages))
+
+
+_SPECIAL_APPROVAL_HINT = "如确有特殊原因，可按制度 2.6 提交特殊申请（须经教务管理员确认）。"
+
+
+def _has_ineligible(messages: list[dict[str, Any]]) -> bool:
+    """本会话是否出现过资格校验不通过的结果。"""
+    for m in messages:
+        if m.get("role") != "tool":
+            continue
+        try:
+            data = json.loads(m["content"])
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if data.get("eligible") is False:
+            return True
+    return False
+
+
+def _ensure_special_hint(content: str, messages: list[dict[str, Any]]) -> str:
+    """资格不符时补上制度 2.6 特殊申请出口（评测 U08 暴露的遗漏）。"""
+    if not content or "特殊申请" in content or not _has_ineligible(messages):
+        return content
+    return f"{content}\n{_SPECIAL_APPROVAL_HINT}"
+
+
+def _tool_citations(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """从工具结果中提取引用来源（search_selection_rules 返回的条文片段）。
+
+    背景：真实供应商常在"工具检索 → 直答"路径作答，此时不走 RAG 兜底分支，
+    若不回填 citations，前端与审计都会缺失引用来源（评测 R01-R07 暴露）。
+    """
+    cites: list[dict[str, Any]] = []
+    seen: set[tuple] = set()
+    for m in messages:
+        if m.get("role") != "tool":
+            continue
+        try:
+            data = json.loads(m["content"])
+        except (json.JSONDecodeError, TypeError):
+            continue
+        for r in data.get("rules") or []:
+            key = (r.get("source"), r.get("heading"), r.get("chunk_no"))
+            if key in seen:
+                continue
+            seen.add(key)
+            cites.append({"index": len(cites) + 1, "source": r.get("source", ""),
+                          "heading": r.get("heading", ""),
+                          "chunk_no": r.get("chunk_no"),
+                          "preview": (r.get("content") or "")[:60]})
+    return cites
+
+
 async def run_agent_loop(conv_id: int, question: str, hits: list[dict[str, Any]],
                          history: list[dict[str, str]], system_prompt: str,
                          ctx: ToolContext, result_box: dict[str, Any]
@@ -66,16 +251,28 @@ async def run_agent_loop(conv_id: int, question: str, hits: list[dict[str, Any]]
         application  create 成功的申请单 dict（confirm_required 已发送）
         tools_used   实际调用过的工具名列表（done 事件 / 评测分析）
     """
+    result_box.setdefault("citations", [])
+    result_box["tools_used"] = []
+
+    # 越权/违规意图先拦截：标准化拒答，不进入工具循环（不写入、不查他人数据）
+    refusal = _safety_refusal(question)
+    if refusal:
+        result_box["answer"] = refusal
+        for piece in _split_stream(refusal):
+            yield _sse("message", {"delta": piece})
+        await log_decision(conv_id, 1, "__safety_refusal__",
+                           {"question": question[:60]}, 0, refusal[:200])
+        return
+
     # Agent 路径消息：系统提示词（含工具约束） + 历史 + 脱敏问题。
     # 注意不预置 RAG 上下文 —— 制度依据由模型按需调 search_selection_rules 获取。
     messages: list[dict[str, Any]] = [
-        {"role": "system", "content": system_prompt},
+        # 系统提示词末尾注入可查询课程清单（运行时生成，防止模型编造课程）
+        {"role": "system", "content": with_course_catalog(system_prompt)},
         *history,
         {"role": "user", "content": f"【学生问题】\n{sanitize_for_llm(question)}"},
     ]
     tools_schema = get_tool_schemas()
-    result_box.setdefault("citations", [])
-    result_box["tools_used"] = []
     # 防重复调用保护：同一请求内 (工具名, 参数) 完全相同的调用只执行一次，
     # 重复请求直接回填错误说明（真实 LLM 也可能出现重复决策，实测防御）
     seen_calls: set[tuple[str, str]] = set()
@@ -94,7 +291,36 @@ async def run_agent_loop(conv_id: int, question: str, hits: list[dict[str, Any]]
         # ── 2b) 直答分支 ──
         if not calls:
             content = decision.get("content")
+            used_tools = any(m.get("role") == "tool" for m in messages)
+
+            # 代码层硬约束（评测 M04.2 暴露）：学生回复确认语、且会话已有选课意向
+            # （查过课程要求/资格）时，模型不得零工具直接口头答复——必须先校验资格，
+            # 校验通过则建申请。命中即把决策打回，附约束说明让模型重新决策。
+            if (not used_tools and _CONFIRM_REPLY_PATTERN.match(question)
+                    and (_presented_selection(_prior_turns(messages))
+                         or await _has_prior_intent(conv_id))):
+                messages.append({
+                    "role": "assistant", "content": content})
+                messages.append({
+                    "role": "user",
+                    "content": "【系统约束】学生已回复确认语。你必须先调用 "
+                               "validate_eligibility 校验资格（尚未校验时）；校验通过后"
+                               "紧接着调用 create_selection_application 生成申请单，"
+                               "不得只口头答复。校验不通过则如实告知原因。"})
+                await log_decision(conv_id, round_no, "__confirm_nudge__",
+                                   {"question": question[:60]}, 0,
+                                   "确认语零工具直答被打回，要求走校验/建单流程")
+                continue
+
+            # 代码层硬约束（评测 R05 暴露的真实供应商问题）：一次工具都没调、
+            # 且答案不是安全拒答/引导话术 → 判定"未检索就作答"，丢弃模型自由
+            # 发挥的内容，强制改走 RAG 直答（附检索到的制度条文与引用来源）。
+            if content and not used_tools and _looks_ungrounded(content):
+                content = None
+
             if content:
+                # 资格不符时补制度 2.6 特殊申请出口（评测 U08 暴露的遗漏）
+                content = _ensure_special_hint(content, messages)
                 # 模型已给出完整回答（mock 拼装 / 真实供应商非流式返回）→ 切块回放
                 result_box["answer"] = content
                 for piece in _split_stream(content):
@@ -120,6 +346,11 @@ async def run_agent_loop(conv_id: int, question: str, hits: list[dict[str, Any]]
                     result_box["answer"] = ""
                     return
                 result_box["answer"] = "".join(pieces)
+
+            # 工具检索→直答路径：引用来源从工具结果回填
+            #（RAG 兜底分支已在上面赋值；此处置空则是真实供应商工具直答的场景）
+            if not result_box["citations"]:
+                result_box["citations"] = _tool_citations(messages)
 
             # 最终作答也记一条决策日志（阶段5 分析完整轨迹）
             await log_decision(conv_id, round_no, "__final_answer__",
@@ -149,6 +380,13 @@ async def run_agent_loop(conv_id: int, question: str, hits: list[dict[str, Any]]
             if call_key in seen_calls:
                 result = {"error": "重复调用相同工具与参数（本次对话已执行过），"
                                    "请勿重复调用，请基于已有结果回答"}
+            elif (name == "create_selection_application"
+                  and not await _check_confirm_gate(conv_id, messages, question)):
+                # 确认门状态化硬约束（评测 M01/M05）：未呈现选课信息、或学生本轮
+                # 未给出确认语，不得创建申请单，避免替学生做主
+                result = {"error": "尚未完成「复述课程信息 → 学生本人确认」的前置步骤，"
+                                   "不能创建选课申请。请先说明课程要求与课表信息，然后"
+                                   "询问学生是否确认选这门课，待学生回复确认后再创建。"}
             else:
                 seen_calls.add(call_key)
                 result = await execute_tool(ctx, round_no, name, args)
