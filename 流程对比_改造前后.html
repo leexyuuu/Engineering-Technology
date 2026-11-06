@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>排课选课与教务协作流程 · 改造前后对比</title>
+<style>
+  :root{
+    --ink:#0f172a;
+    --text:#243244;
+    --muted:#66768c;
+    --line:#e4eaf3;
+    --bg:#f3f6fb;
+    --card:#ffffff;
+    --before:#b45309;
+    --before-soft:#fff8ef;
+    --before-line:#f6d7ae;
+    --after:#0f766e;
+    --after-soft:#f0fdfa;
+    --after-line:#a7e8dc;
+    --danger:#c0392b;
+    --danger-soft:#fdf3f2;
+    --shadow:0 18px 45px rgba(15,35,60,.08);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 12% 4%, rgba(15,118,110,.07), transparent 32%),
+      radial-gradient(circle at 88% 12%, rgba(180,83,9,.06), transparent 30%),
+      var(--bg);
+    color:var(--text);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ── Hero ── */
+  .hero{
+    position:relative;
+    overflow:hidden;
+    color:#eaf3fb;
+    background:
+      radial-gradient(circle at 82% 18%, rgba(20,184,166,.30), transparent 42%),
+      radial-gradient(circle at 12% 92%, rgba(245,158,11,.20), transparent 40%),
+      linear-gradient(135deg,#071725 0%,#0d2a3e 52%,#0a2132 100%);
+  }
+  .hero::after{
+    content:"";
+    position:absolute;inset:0;
+    background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+                      linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+    background-size:44px 44px;
+    mask-image:linear-gradient(to bottom,rgba(0,0,0,.75),transparent 92%);
+    pointer-events:none;
+  }
+  .hero-inner{
+    position:relative;z-index:1;
+    max-width:1180px;margin:0 auto;
+    padding:58px 32px 44px;
+  }
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:9px;
+    font-size:12.5px;letter-spacing:.16em;
+    color:#8fd8cf;text-transform:uppercase;
+    margin-bottom:18px;
+  }
+  .eyebrow::before{
+    content:"";width:28px;height:2px;background:#2dd4bf;
+  }
+  h1{
+    margin:0 0 14px;
+    font-size:40px;line-height:1.2;font-weight:750;
+    letter-spacing:.01em;color:#f4fafd;
+  }
+  .sub{
+    margin:0;max-width:760px;
+    font-size:16px;color:#b9cde0;
+  }
+  .meta{
+    display:flex;flex-wrap:wrap;gap:10px 24px;
+    margin-top:22px;font-size:12.5px;color:#8fa9bf;
+  }
+  .meta span{display:inline-flex;align-items:center;gap:7px;}
+  .meta span::before{
+    content:"";width:5px;height:5px;border-radius:50%;
+    background:#2dd4bf;opacity:.8;
+  }
+  .metrics{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:14px;
+    margin-top:34px;
+  }
+  .metric{
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:14px;
+    padding:16px 18px;
+    backdrop-filter:blur(6px);
+  }
+  .metric .label{font-size:11.5px;letter-spacing:.08em;color:#8fb2c9;text-transform:uppercase;}
+  .metric .value{
+    margin-top:7px;font-size:23px;font-weight:700;color:#f2fbff;
+    line-height:1.25;white-space:nowrap;
+  }
+  .metric .value em{font-style:normal;color:#5eead4;font-size:17px;margin:0 4px;}
+  .metric .note{margin-top:4px;font-size:11.5px;color:#8fa9bf;}
+
+  /* ── Layout ── */
+  main{max-width:1180px;margin:0 auto;padding:36px 32px 10px;}
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:20px;
+    box-shadow:var(--shadow);
+    padding:34px 36px 38px;
+    margin-bottom:30px;
+  }
+  .panel-head{
+    display:flex;justify-content:space-between;gap:28px;align-items:flex-start;
+    padding-bottom:22px;margin-bottom:8px;
+    border-bottom:1px dashed var(--line);
+  }
+  .panel-head h2{
+    margin:8px 0 0;font-size:25px;line-height:1.35;color:var(--ink);font-weight:720;
+  }
+  .panel-desc{
+    margin:0;max-width:470px;font-size:13.5px;color:var(--muted);
+    padding-top:6px;
+  }
+  .badge{
+    display:inline-block;
+    font-size:11px;font-weight:700;letter-spacing:.12em;
+    padding:4px 11px;border-radius:999px;text-transform:uppercase;
+  }
+  .badge--before{color:#92400e;background:#fef3c7;border:1px solid #fcd34d;}
+  .badge--after{color:#115e59;background:#ccfbf1;border:1px solid #5eead4;}
+
+  .legend{
+    display:flex;flex-wrap:wrap;gap:18px;
+    margin:18px 0 26px;font-size:12px;color:var(--muted);
+  }
+  .legend > span{display:inline-flex;align-items:center;gap:7px;}
+  .lg-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .lg-dot--step{background:#94a3b8;}
+  .lg-dot--event{background:var(--danger);}
+  .lg-line{width:22px;height:2px;background:#94a3b8;display:inline-block;}
+  .lg-chip{
+    display:inline-block;width:16px;height:10px;border-radius:3px;
+    border:1px solid #14b8a6;background:#ccfbf1;
+  }
+
+  /* ── Flow ── */
+  .flow{position:relative;padding-left:70px;}
+  .flow::before{
+    content:"";position:absolute;left:25px;top:16px;bottom:18px;width:2px;
+    background:linear-gradient(to bottom,var(--line) 0%,var(--before-line) 12%,var(--before-line) 88%,var(--line) 100%);
+  }
+  .flow--after::before{
+    background:linear-gradient(to bottom,var(--line) 0%,var(--after-line) 12%,var(--after-line) 88%,var(--line) 100%);
+  }
+  .node{position:relative;margin-bottom:22px;}
+  .node:last-child{margin-bottom:0;}
+  .node:not(:last-child)::after{
+    content:"";
+    position:absolute;left:-44px;bottom:-15px;
+    width:0;height:0;
+    border-left:5px solid transparent;
+    border-right:5px solid transparent;
+    border-top:7px solid var(--before-line);
+  }
+  .flow--after .node:not(:last-child)::after{border-top-color:var(--after-line);}
+  .dot{
+    position:absolute;left:-58px;top:22px;
+    width:36px;height:36px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:800;letter-spacing:.02em;
+    background:#fff;color:var(--before);
+    border:2px solid var(--before-line);
+    box-shadow:0 0 0 5px #fff;
+  }
+  .flow--after .dot{color:var(--after);border-color:var(--after-line);}
+  .card{
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:#fff;
+    padding:18px 20px 16px;
+    transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+  }
+  .card:hover{
+    transform:translateX(3px);
+    border-color:#cbd8e6;
+    box-shadow:0 10px 26px rgba(15,35,60,.07);
+  }
+  .card-head{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;}
+  .card-head h3{
+    margin:0;font-size:16.5px;font-weight:700;color:var(--ink);line-height:1.4;
+  }
+  .step-no{
+    font-size:10.5px;font-weight:700;letter-spacing:.1em;color:#98a7ba;
+  }
+  .time{
+    margin-left:auto;font-size:11.5px;color:var(--muted);
+    background:#f6f9fd;border:1px solid var(--line);
+    padding:2px 8px;border-radius:6px;white-space:nowrap;
+  }
+  .actor{
+    font-size:11px;padding:2px 9px;border-radius:999px;border:1px solid;white-space:nowrap;
+  }
+  .actor--student{color:#1d4ed8;background:#eff6ff;border-color:#bfdbfe;}
+  .actor--agent{color:#0f766e;background:#ecfdf5;border-color:#a7f3d0;}
+  .actor--admin{color:#92400e;background:#fffbeb;border-color:#fde68a;}
+  .actor--system{color:#475569;background:#f1f5f9;border-color:#e2e8f0;}
+  .card p{margin:9px 0 0;font-size:13.5px;color:#4a5a6e;}
+  .facts{
+    margin:10px 0 0;padding-left:18px;
+    font-size:12.5px;color:var(--muted);
+  }
+  .facts li{margin:3px 0;}
+  .facts li::marker{color:#b6c3d2;}
+
+  /* 典型事件 */
+  .event{
+    margin-top:14px;
+    background:var(--danger-soft);
+    border:1px solid #f4c7c1;
+    border-left:4px solid var(--danger);
+    border-radius:10px;
+    padding:12px 14px 11px;
+  }
+  .event-tag{
+    display:inline-block;
+    font-size:10.5px;font-weight:700;letter-spacing:.08em;
+    color:#fff;background:var(--danger);
+    padding:2px 8px;border-radius:5px;
+    margin-bottom:5px;
+  }
+  .event strong{font-size:13.5px;color:#8f241a;margin-left:2px;}
+  .event p{margin:5px 0 0;font-size:12.5px;line-height:1.7;color:#6b403c;}
+  .event .root{
+    display:block;margin-top:6px;font-size:12px;color:#8a5a55;
+  }
+  .event .root b{color:#a33227;font-weight:600;}
+
+  /* 门禁节点 */
+  .node--gate .card{
+    border-color:#5eead4;
+    background:linear-gradient(180deg,#f2fffc,#ffffff 65%);
+    box-shadow:0 0 0 3px rgba(20,184,166,.10);
+  }
+  .gate-tag{
+    display:inline-block;
+    font-size:10.5px;font-weight:700;letter-spacing:.08em;
+    color:#0f766e;background:#ccfbf1;border:1px solid #5eead4;
+    padding:2px 8px;border-radius:5px;
+    margin-left:2px;
+  }
+
+  /* 支撑卡片 */
+  .support-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:16px;
+    margin-top:30px;padding-top:26px;
+    border-top:1px dashed var(--line);
+  }
+  .support{
+    background:var(--after-soft);
+    border:1px solid var(--after-line);
+    border-radius:13px;
+    padding:18px 18px 16px;
+  }
+  .support h3{
+    margin:0 0 4px;font-size:14.5px;color:#115e59;
+    display:flex;align-items:center;gap:8px;
+  }
+  .support h3::before{
+    content:"";width:6px;height:6px;border-radius:50%;
+    background:#14b8a6;box-shadow:0 0 0 3px rgba(20,184,166,.16);
+  }
+  .support .tagline{font-size:11.5px;color:#5f8f89;margin:0 0 9px;}
+  .support ul{
+    margin:0;padding-left:17px;
+    font-size:12.5px;color:#3f615d;
+  }
+  .support li{margin:4px 0;}
+  .support li::marker{color:#5eead4;}
+
+  /* 对比表 */
+  .table-wrap{overflow-x:auto;margin-top:22px;border-radius:14px;border:1px solid var(--line);}
+  table{border-collapse:collapse;width:100%;min-width:820px;font-size:13px;background:#fff;}
+  thead th{
+    text-align:left;padding:14px 18px;
+    font-size:12px;letter-spacing:.05em;color:#5b6b7f;
+    background:#f7fafd;border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  thead th:nth-child(2){color:#a05a0c;background:#fffaf2;}
+  thead th:nth-child(3){color:#0f766e;background:#f2fffc;}
+  tbody td{
+    padding:13px 18px;border-bottom:1px solid #edf1f7;
+    vertical-align:top;line-height:1.6;
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:nth-child(even) td{background:#fbfcfe;}
+  tbody tr:nth-child(even) td:nth-child(3){background:#f7fefc;}
+  td.dim{width:19%;font-weight:650;color:var(--ink);}
+  td.before-cell{width:40%;color:#7a5a3c;}
+  td.after-cell{width:41%;color:#2c5d58;}
+  td.after-cell strong{color:#0f766e;}
+  td.before-cell strong{color:#8a4b0a;}
+
+  footer{
+    max-width:1180px;margin:6px auto 0;padding:0 32px 48px;
+    font-size:12px;color:#8494a8;
+  }
+  footer .src{
+    display:flex;flex-wrap:wrap;gap:6px 22px;margin-bottom:10px;
+  }
+  footer .note{
+    padding:14px 16px;background:#fff;border:1px solid var(--line);
+    border-radius:10px;color:#6a7a8e;
+  }
+
+  @media (max-width:900px){
+    .hero-inner{padding:42px 20px 34px;}
+    h1{font-size:30px;}
+    .metrics{grid-template-columns:repeat(2,1fr);}
+    main{padding:24px 16px 6px;}
+    .panel{padding:24px 20px 28px;border-radius:16px;}
+    .panel-head{flex-direction:column;gap:10px;}
+    .panel-desc{max-width:none;}
+    .support-grid{grid-template-columns:1fr;}
+    .flow{padding-left:58px;}
+    .flow::before{left:19px;}
+    .dot{left:-52px;width:32px;height:32px;font-size:11px;}
+    .node:not(:last-child)::after{left:-38px;}
+    footer{padding:0 20px 36px;}
+  }
+  @media print{
+    body{background:#fff;}
+    .hero{background:#0d2a3e !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .panel{box-shadow:none;break-inside:avoid;page-break-inside:avoid;}
+    .card:hover{transform:none;box-shadow:none;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">知行职业学院 · 排课选课与教务协作智能体</div>
+    <h1>业务流程改造前后对比</h1>
+    <p class="sub">从「人工分散协作」到「制度可溯源、冲突前置、确认门闭环」</p>
+    <div class="meta">
+      <span>依据《教务管理制度》JW-ZD-2026-001 · v2026.1</span>
+      <span>试点：计算机应用技术专业</span>
+      <span>更新：2026-11</span>
+    </div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="label">选课冲突</div>
+        <div class="value">360 <em>→</em> 80</div>
+        <div class="note">起 / 学期（业务目标）</div>
+      </div>
+      <div class="metric">
+        <div class="label">调课处理</div>
+        <div class="value">约 3 天 <em>→</em> ≤1 工作日</div>
+        <div class="note">制度 4.2 审核时限</div>
+      </div>
+      <div class="metric">
+        <div class="label">人工调整工时</div>
+        <div class="value">↓ 30%</div>
+        <div class="note">试点验收目标</div>
+      </div>
+      <div class="metric">
+        <div class="label">覆盖规模</div>
+        <div class="value">420 门次</div>
+        <div class="note">每学期 · 开学周日均 120 调整请求</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ══════════════════ 改造前 ══════════════════ -->
+  <section class="panel" id="before">
+    <div class="panel-head">
+      <div>
+        <span class="badge badge--before">AS-IS · 改造前</span>
+        <h2>现状流程：人工 + 分散沟通</h2>
+      </div>
+      <p class="panel-desc">制度 1.1 的六步主线仍在运行，但信息散落在邮件、微信群、Excel 与个人便签里；冲突往往在选课之后才暴露，调整靠人找人。</p>
+    </div>
+
+    <div class="legend">
+      <span><i class="lg-dot lg-dot--step"></i>流程步骤</span>
+      <span><i class="lg-line"></i>流转方向</span>
+      <span><i class="lg-dot lg-dot--event"></i>典型事件问题</span>
+    </div>
+
+    <div class="flow flow--before">
+
+      <div class="node">
+        <span class="dot">01</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 01</span>
+            <h3>教学计划发布</h3>
+            <span class="actor actor--admin">教务</span>
+            <span class="time">第 16 周</span>
+          </div>
+          <p>下学期教学计划以邮件或群文件下发，各专业培养计划、课程新旧编码并存。</p>
+          <ul class="facts">
+            <li>计划版本与课程编码靠人工核对，跨学院规则口径不统一</li>
+            <li>课程主数据的新旧代码映射由教务系统工程师个人维护</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="node">
+        <span class="dot">02</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 02</span>
+            <h3>手工排课</h3>
+            <span class="actor actor--admin">排课专员</span>
+            <span class="time">第 18 周完成</span>
+          </div>
+          <p>排课专员在 Excel 中人工排定 420 门次课程，再逐项对照规则核对。</p>
+          <ul class="facts">
+            <li>教室容量不得超过 100%（建议 90%），阶梯教室不排实训课</li>
+            <li>实训室「维护占用」、教师同时段不排两门、周学时 ≤ 20，均靠人工比对</li>
+          </ul>
+          <div class="event">
+            <span class="event-tag">典型事件 01</span><strong>排课底稿分散</strong>
+            <p>教室容量表、实训室维护记录、教师排班表分别存在不同 Excel 与个人便签中。排完课后才发现维护占用与已排课程撞车，整批返工重排。</p>
+            <span class="root"><b>现状根因：</b>无统一课程/场地主数据视图，规则校验依赖个人经验。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="node">
+        <span class="dot">03</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 03</span>
+            <h3>学生选课</h3>
+            <span class="actor actor--student">学生</span>
+            <span class="time">第 18 周周一至周五</span>
+          </div>
+          <p>学生在教务系统选课，系统主要提示同一时段冲突。</p>
+          <ul class="facts">
+            <li>先修课成绩须 ≥ 60 分、学期学分 16–28、跨学院容量以开课学院为准</li>
+            <li>上述资格条件需学生自行查阅制度、自行判断是否满足</li>
+          </ul>
+          <div class="event">
+            <span class="event-tag">典型事件 02</span><strong>选完才发现</strong>
+            <p>学生按系统可选列表完成选课，开学后才被告知先修课成绩未达标、或所选课程与实训室维护占用冲突，只能退改选，已排好的学期计划被打乱。</p>
+            <span class="root"><b>现状根因：</b>先修资格与场地状态未在选课前校验，冲突发现滞后。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="node">
+        <span class="dot">04</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 04</span>
+            <h3>冲突校验（事后）</h3>
+            <span class="actor actor--student">学生</span>
+            <span class="actor actor--admin">教务</span>
+            <span class="time">开学第一周补退选</span>
+          </div>
+          <p>真正的冲突核对多发生在选课之后，补退选窗口只有一周。</p>
+          <ul class="facts">
+            <li>学生发现问题后自行联系教务，处理进度无法查询</li>
+            <li>补退选截止后不再受理改选，窗口错失只能等下个学期</li>
+          </ul>
+          <div class="event">
+            <span class="event-tag">典型事件 03</span><strong>开学周井喷</strong>
+            <p>日均 120 个调整请求集中在开学第一周，补退选窗口短，教务靠人海核对，漏处理与重复处理并存；学生反复询问同一进度。</p>
+            <span class="root"><b>现状根因：</b>无统一待办与状态跟踪，处理能力随请求量线性波动。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="node">
+        <span class="dot">05</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 05</span>
+            <h3>求助与人工核查</h3>
+            <span class="actor actor--student">学生</span>
+            <span class="actor actor--admin">教务</span>
+            <span class="time">随时 · 线下/电话/微信</span>
+          </div>
+          <p>学生通过电话、微信或线下窗口咨询制度，教务口头解释条款。</p>
+          <ul class="facts">
+            <li>同一问题不同人答复口径可能不一致，无引用来源</li>
+            <li>排课专员需翻 Excel、便签、聊天记录还原上一次的处理依据</li>
+          </ul>
+          <div class="event">
+            <span class="event-tag">典型事件 04</span><strong>便签交接</strong>
+            <p>调课原因、口头承诺、临时安排只留在个人便签或聊天记录。人员轮班或换岗后，接手人无从判断，错误结果覆盖了原排课记录。</p>
+            <span class="root"><b>现状根因：</b>关键说明无结构化留痕，仅发送消息不等于交接完成。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="node">
+        <span class="dot">06</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 06</span>
+            <h3>人工调整与执行</h3>
+            <span class="actor actor--admin">教务</span>
+            <span class="time">平均约 3 天</span>
+          </div>
+          <p>调课/改选经邮件往返与电话确认后，由教务在教务系统手工录入。</p>
+          <ul class="facts">
+            <li>审批链路无状态机，进度只能靠追问</li>
+            <li>线下记录与教务系统双份维护，重复录入且易出错</li>
+          </ul>
+          <div class="event">
+            <span class="event-tag">典型事件 05</span><strong>三天调课</strong>
+            <p>一次调课经历邮件往返、电话确认、人工改系统，平均约 3 天。学生已按原课表安排，教师临时改期又引发二次调整与新的冲突。</p>
+            <span class="root"><b>现状根因：</b>无统一申请单与确认链路，跨角色协作全靠人工推动。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="node">
+        <span class="dot">07</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 07</span>
+            <h3>通知与名单确认</h3>
+            <span class="actor actor--admin">教务</span>
+            <span class="time">调整完成后</span>
+          </div>
+          <p>调整结果通过群消息或电话通知学生与教师，名单人工确认。</p>
+          <ul class="facts">
+            <li>群发通知无回执，是否送达与是否知悉无法确认</li>
+            <li>无业务编号、课表版本与签核人，事后无法追溯</li>
+          </ul>
+          <div class="event">
+            <span class="event-tag">典型事件 06</span><strong>无凭证确认</strong>
+            <p>名单确认靠群发通知完成，没有回执、业务编号、制度版本与签核人。事后追责时无法回答「谁在什么时候、依据哪版制度确认了什么」。</p>
+            <span class="root"><b>现状根因：</b>审计要素缺失，交接与确认不可复核。</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════ 改造后 ══════════════════ -->
+  <section class="panel" id="after">
+    <div class="panel-head">
+      <div>
+        <span class="badge badge--after">TO-BE · 改造后</span>
+        <h2>目标流程：智能体协作 + 确认门</h2>
+      </div>
+      <p class="panel-desc">学生一次会话内完成「问制度 → 查课表 → 冲突预检 → 资格校验 → 申请草稿 → 本人确认」；教务只做审核与最终执行，系统接口只读，不代选课。</p>
+    </div>
+
+    <div class="legend">
+      <span><i class="lg-dot lg-dot--step"></i>流程步骤</span>
+      <span><i class="lg-line"></i>流转方向</span>
+      <span><i class="lg-chip"></i>确认门 / 硬门禁</span>
+      <span>决策循环 ≤ 5 轮 · 每步调用落决策日志</span>
+    </div>
+
+    <div class="flow flow--after">
+
+      <div class="node">
+        <span class="dot">01</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 01</span>
+            <h3>发起问题 / 选课意向</h3>
+            <span class="actor actor--student">学生</span>
+            <span class="time">SSE 流式会话</span>
+          </div>
+          <p>学生用自然语言提问或发起选课意向，系统保留最近 6 轮上下文。</p>
+          <ul class="facts">
+            <li>支持代词回指（「这门课」）与目标切换（改选另一门）</li>
+            <li>超范围、诱导篡改制度、诱导确认谣言等意图一律拒绝</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="node">
+        <span class="dot">02</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 02</span>
+            <h3>制度问答（RAG）</h3>
+            <span class="actor actor--agent">智能体</span>
+            <span class="time">知识库热更新</span>
+          </div>
+          <p>按标题切界 + 500 字聚合切片，向量与 BM25 混合检索、RRF 融合取 top3。</p>
+          <ul class="facts">
+            <li>回答必须附引用来源（文件名 + 片段）与制度条款号</li>
+            <li>零命中明确回答「制度中未找到」，不编造、不附和</li>
+            <li>规则版本冲突时并列展示两个版本，不自行合并</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="node">
+        <span class="dot">03</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 03</span>
+            <h3>工具调用</h3>
+            <span class="actor actor--agent">智能体</span>
+            <span class="time">≤ 5 轮决策循环</span>
+          </div>
+          <p>按问题需要调用工具，获取回答所需的真实业务数据。</p>
+          <ul class="facts">
+            <li>课表查询 / 选课规则检索 / 课程要求查询</li>
+            <li>每次工具调用写入决策日志；重复调用拦截</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="node">
+        <span class="dot">04</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 04</span>
+            <h3>冲突预检（确定性规则引擎）</h3>
+            <span class="actor actor--agent">智能体</span>
+            <span class="time">选课前</span>
+          </div>
+          <p>先修课冲突与教室时空冲突由规则引擎判定，LLM 仅负责解释。</p>
+          <ul class="facts">
+            <li>命中时显示原排课记录与待确认字段，可解释、可审计</li>
+            <li>错误结果不得覆盖原记录；场地维护占用 P1 纳入</li>
+            <li>数据超 15 分钟标「待刷新」，仅提示、不阻断</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="node node--gate">
+        <span class="dot">05</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 05</span>
+            <h3>资格校验</h3>
+            <span class="actor actor--agent">智能体</span>
+            <span class="gate-tag">硬门禁</span>
+          </div>
+          <p>validate_eligibility 统一校验选课资格，结果作为后续建申请的前置条件。</p>
+          <ul class="facts">
+            <li>先修成绩 ≥ 60、学期学分 16–28、时段不重叠、跨学院容量</li>
+            <li>未通过 → 转教务人工审核；代码层直接拒绝创建申请</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="node">
+        <span class="dot">06</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 06</span>
+            <h3>生成申请草稿</h3>
+            <span class="actor actor--agent">智能体</span>
+            <span class="time">状态机 draft</span>
+          </div>
+          <p>资格校验通过后生成选课申请草稿，写入业务编号与课程、时段、依据。</p>
+          <ul class="facts">
+            <li>草稿态不代表已选课，不产生任何教务系统写入</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="node node--gate">
+        <span class="dot">07</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 07</span>
+            <h3>学生确认</h3>
+            <span class="actor actor--student">学生</span>
+            <span class="gate-tag">确认门</span>
+          </div>
+          <p>流式确认卡片列出课程、时段与判定依据，由学生本人确认。</p>
+          <ul class="facts">
+            <li>draft → student_confirmed；未经本人确认不得提交</li>
+            <li>确认卡片即凭证：谁确认、何时确认、依据哪版制度</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="node">
+        <span class="dot">08</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 08</span>
+            <h3>教务审核</h3>
+            <span class="actor actor--admin">教务管理员</span>
+            <span class="time">状态机流转</span>
+          </div>
+          <p>教务管理员审核申请，特殊申请（如突破学分上限）由教务终审。</p>
+          <ul class="facts">
+            <li>student_confirmed → admin_confirmed / rejected</li>
+            <li>驳回保留原因；教师调课申请走同一确认链路</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="node">
+        <span class="dot">09</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 09</span>
+            <h3>人工执行（教务系统只读）</h3>
+            <span class="actor actor--admin">教务</span>
+            <span class="actor actor--system">教务系统</span>
+            <span class="time">executed</span>
+          </div>
+          <p>教务管理员在教务系统中完成最终选课或调课操作。</p>
+          <ul class="facts">
+            <li>系统接口只读：不代替学生选课、不修改成绩</li>
+            <li>执行完成后状态置为 executed，失败可回溯驳回原因</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="node">
+        <span class="dot">10</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="step-no">STEP 10</span>
+            <h3>审计与通知</h3>
+            <span class="actor actor--agent">智能体</span>
+            <span class="actor actor--admin">教务</span>
+            <span class="time">全程留痕</span>
+          </div>
+          <p>全流程记录业务编号、资料版本、事实引用、工具轨迹、人工改动与签核人。</p>
+          <ul class="facts">
+            <li>通知带回执；交接须写明未解决事项与接手人（制度 4.4）</li>
+            <li>审计页支持按角色、关键词、日期、违规标记筛选</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="support-grid">
+      <div class="support">
+        <h3>确认门 · 双层防护</h3>
+        <p class="tagline">提示词约束 + 代码硬约束</p>
+        <ul>
+          <li>提示词层：固定工具顺序，先校验后建申请</li>
+          <li>代码层：未经 validate_eligibility 通过，一律拒绝创建申请</li>
+          <li>状态机：draft → student_confirmed → admin_confirmed → executed / rejected</li>
+        </ul>
+      </div>
+      <div class="support">
+        <h3>异常 · 转人工</h3>
+        <p class="tagline">不静默失败，不让人凭空找</p>
+        <ul>
+          <li>触发条件：资料缺依据 / 规则版本冲突 / 关键系统不可用 / 场地维护异常</li>
+          <li>必须标注触发原因、接手人与确认时间</li>
+          <li>仅发送消息不视为交接完成（制度 4.4）</li>
+        </ul>
+      </div>
+      <div class="support">
+        <h3>数据 · 时效与兜底</h3>
+        <p class="tagline">只读快照 + 明确标识</p>
+        <ul>
+          <li>课表与课程数据每 15 分钟同步一次</li>
+          <li>超周期标「待刷新」，以教务系统最终数据为准</li>
+          <li>中断时显示带时间戳只读快照 + 「暂未更新」</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ 对比 ══════════════════ -->
+  <section class="panel" id="compare">
+    <div class="panel-head">
+      <div>
+        <span class="badge badge--after">COMPARE</span>
+        <h2>改造前后关键差异</h2>
+      </div>
+      <p class="panel-desc">同一套制度，两种执行方式：改造前依赖人的经验与记忆，改造后把规则、状态与凭证沉到系统里。</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>对比维度</th>
+            <th>改造前（人工 + 分散沟通）</th>
+            <th>改造后（智能体 + 确认门）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="dim">制度查询与解释</td>
+            <td class="before-cell">电话、微信、线下询问；口头解释条款，<strong>口径不统一、无引用来源</strong></td>
+            <td class="after-cell">RAG 检索制度库，回答附<strong>引用来源与条款号</strong>；零命中明确「制度中未找到」</td>
+          </tr>
+          <tr>
+            <td class="dim">冲突发现时机</td>
+            <td class="before-cell">选课之后、甚至开学后才暴露，补退选窗口仓促</td>
+            <td class="after-cell"><strong>选课前预检</strong>：先修课 + 教室时空冲突，规则引擎判定、可解释可审计</td>
+          </tr>
+          <tr>
+            <td class="dim">资格与规则校验</td>
+            <td class="before-cell">学生自行判断；先修成绩、学分上下限、跨学院容量易漏</td>
+            <td class="after-cell"><strong>validate_eligibility 硬门禁</strong>统一校验，未通过不得创建申请</td>
+          </tr>
+          <tr>
+            <td class="dim">申请与确认</td>
+            <td class="before-cell">邮件、电话、口头承诺；无状态、无回执</td>
+            <td class="after-cell"><strong>状态机闭环</strong>：draft → student_confirmed → admin_confirmed → executed / rejected</td>
+          </tr>
+          <tr>
+            <td class="dim">系统写入边界</td>
+            <td class="before-cell">教务多系统重复录入，错误结果可能覆盖原记录</td>
+            <td class="after-cell">接口<strong>只读</strong>，系统不代选课、不改成绩；人工执行保留最终控制权</td>
+          </tr>
+          <tr>
+            <td class="dim">调课处理时效</td>
+            <td class="before-cell">邮件往返 + 电话确认 + 人工改系统，平均约 <strong>3 天</strong></td>
+            <td class="after-cell">同一确认链路在线流转，制度要求 <strong>1 个工作日内完成审核</strong></td>
+          </tr>
+          <tr>
+            <td class="dim">交接与审计</td>
+            <td class="before-cell">说明留在个人便签/聊天记录；群发通知无回执，<strong>无凭证</strong></td>
+            <td class="after-cell">业务编号、课表版本、工具轨迹、人工改动、签核人<strong>全程留痕</strong></td>
+          </tr>
+          <tr>
+            <td class="dim">异常处理</td>
+            <td class="before-cell">静默失败或靠人反复追问；责任人与进度不明</td>
+            <td class="after-cell">明确中文错误码 + <strong>转人工出口</strong>，标注触发原因、接手人、确认时间</td>
+          </tr>
+          <tr>
+            <td class="dim">数据时效</td>
+            <td class="before-cell">数据更新时间不明确，学生按旧信息做决策</td>
+            <td class="after-cell">15 分钟同步；超周期标「待刷新」，中断用带时间戳只读快照兜底</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="src">
+    <span>来源：《一页纸需求清单》docs/01_需求清单.md</span>
+    <span>《教务管理制度（试行）》seeds/教务管理制度.md</span>
+    <span>《上线演练报告》docs/03_上线演练报告.md</span>
+  </div>
+  <div class="note">
+    说明：360 → 80 起/学期、约 3 天 → 1 个工作日、人工调整工时下降 30% 均为业务目标值；验收统计口径按《需求评审 10 问》Q9 待确认。改造前流程依据制度 1.1 与实际协作方式归纳，典型事件用于说明现状问题，不代表特定个案的完整记录。
+  </div>
+</footer>
+
+</body>
+</html>
